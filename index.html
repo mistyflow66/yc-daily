@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sodagreen Cyber-Dashboard</title>
+    <title>Sodagreen Dashboard (Secure)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&display=swap');
-        
         :root {
             --bg: #0E0B14; --surface: #181225;
             --primary: #7B3DFF; --secondary: #FF6A3D;
@@ -15,13 +14,10 @@
             --accent-pink: #E5A3C7; --accent-blue: #3D57FF;
             --text: #F3F0FF; --text-muted: #B8AFCF;
         }
-
         body { background-color: var(--bg); color: var(--text); font-family: sans-serif; }
         .font-serif-tc { font-family: 'Noto Serif TC', serif; }
         .surface { background-color: var(--surface); border: 1px solid rgba(255,255,255,0.05); }
         .done-text { text-decoration: line-through; color: var(--text-muted); opacity: 0.5; }
-        
-        /* 滾動條樣式 */
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
     </style>
@@ -31,7 +27,10 @@
     <div class="max-w-md mx-auto space-y-6">
         <header class="flex justify-between items-center py-2">
             <h1 class="text-2xl font-black tracking-tighter" style="color: var(--primary)">DASHBOARD.exe</h1>
-            <div id="status" class="text-[10px] uppercase tracking-widest px-2 py-1 rounded bg-white/5 text-muted">Initializing...</div>
+            <div class="flex gap-2">
+                <button onclick="resetToken()" class="text-[9px] opacity-30 hover:opacity-100 border border-white/20 px-2 py-0.5 rounded">RESET KEY</button>
+                <div id="status" class="text-[10px] uppercase tracking-widest px-2 py-1 rounded bg-white/5 text-muted">Initializing...</div>
+            </div>
         </header>
 
         <section class="surface rounded-3xl p-6 shadow-2xl relative overflow-hidden min-h-[140px] flex flex-col justify-center">
@@ -43,13 +42,11 @@
         <div class="surface p-5 rounded-3xl shadow-xl">
             <input id="mainInput" type="text" placeholder="Input command..." 
                 class="w-full bg-black/40 text-white placeholder-slate-600 p-4 rounded-2xl outline-none focus:ring-1 focus:ring-purple-500 mb-4">
-            
             <div class="grid grid-cols-3 gap-2">
                 <button onclick="togglePriority()" class="py-3 rounded-xl text-xs font-bold transition-all active:scale-95" style="background: var(--primary)">＋ TASK</button>
                 <button onclick="addItem('idea')" class="py-3 rounded-xl text-xs font-bold opacity-80" style="background: var(--surface); border: 1px solid var(--primary)">IDEA</button>
                 <button onclick="addItem('buy')" class="py-3 rounded-xl text-xs font-bold opacity-80" style="background: var(--surface); border: 1px solid var(--primary)">BUY</button>
             </div>
-
             <div id="priorityGroup" class="hidden grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-white/5">
                 <button onclick="addTodo(1)" class="py-2 rounded-lg text-[10px] font-bold border border-red-500/50 text-red-400">CRITICAL</button>
                 <button onclick="addTodo(2)" class="py-2 rounded-lg text-[10px] font-bold border border-yellow-500/50 text-yellow-400">NORMAL</button>
@@ -65,12 +62,10 @@
                 </div>
                 <ul id="todoList" class="space-y-2"></ul>
             </section>
-
             <section>
                 <h2 class="text-[10px] font-bold tracking-widest uppercase mb-3 px-2" style="color: var(--accent-pink)">💡 Brainstorm</h2>
                 <ul id="ideaList" class="space-y-2"></ul>
             </section>
-
             <section>
                 <h2 class="text-[10px] font-bold tracking-widest uppercase mb-3 px-2" style="color: var(--accent-yellow)">🛒 Shopping</h2>
                 <ul id="buyList" class="space-y-2"></ul>
@@ -80,8 +75,8 @@
 
     <script>
         const CONFIG = {
-            TOKEN: '你的_GITHUB_TOKEN', // 請替換
-            GIST_ID: '你的_GIST_ID', // 請替換
+            // 安全考量：Token 不寫死在代碼中，而是從 localStorage 抓取
+            GIST_ID: '5b496142f75dec55cde88dd207f658a7',
             LYRICS_URL: 'https://raw.githubusercontent.com/mistyflow66/yc-daily/refs/heads/main/lyrics.json'
         };
 
@@ -89,18 +84,45 @@
         let lyricsDB = [];
         let currentLyric = null;
 
+        // 核心：獲取 Token 邏輯
+        function getToken() {
+            let token = localStorage.getItem('GIST_TOKEN');
+            if (!token) {
+                token = prompt("請輸入您的 GitHub Personal Access Token (ghp_...):\n(此代碼僅存於您的瀏覽器快取中，不會上傳至 Repo)");
+                if (token) localStorage.setItem('GIST_TOKEN', token);
+            }
+            return token;
+        }
+
+        function resetToken() {
+            localStorage.removeItem('GIST_TOKEN');
+            location.reload();
+        }
+
         // 初始化
         async function init() {
-            updateStatus('Loading Cloud...');
+            updateStatus('Checking Token...');
+            const token = getToken();
+            if (!token) {
+                updateStatus('Need Token');
+                return;
+            }
+
             try {
-                // 1. 抓歌詞
+                // 1. 抓歌詞 (這不需要 Token，因為 Repo 是公開的)
                 const lyricRes = await fetch(CONFIG.LYRICS_URL);
                 lyricsDB = await lyricRes.json();
                 
-                // 2. 抓待辦 (GitHub Gist)
+                // 2. 抓待辦 (使用手動輸入的 Token)
                 const gistRes = await fetch(`https://api.github.com/gists/${CONFIG.GIST_ID}`, {
-                    headers: { Authorization: `token ${CONFIG.TOKEN}` }
+                    headers: { Authorization: `token ${token}` }
                 });
+                
+                if (gistRes.status === 401) {
+                    alert("Token 無效，請重新輸入。");
+                    resetToken();
+                }
+
                 const gistData = await gistRes.json();
                 db = JSON.parse(gistData.files['dashboard.json'].content);
                 
@@ -113,24 +135,19 @@
             }
         }
 
-        // 雲端同步
         async function syncCloud() {
+            const token = getToken();
             updateStatus('Syncing...');
-            try {
-                await fetch(`https://api.github.com/gists/${CONFIG.GIST_ID}`, {
-                    method: 'PATCH',
-                    headers: { Authorization: `token ${CONFIG.TOKEN}` },
-                    body: JSON.stringify({
-                        files: { 'dashboard.json': { content: JSON.stringify(db) } }
-                    })
-                });
-                updateStatus('System Online');
-            } catch (e) {
-                updateStatus('Sync Error');
-            }
+            await fetch(`https://api.github.com/gists/${CONFIG.GIST_ID}`, {
+                method: 'PATCH',
+                headers: { Authorization: `token ${token}` },
+                body: JSON.stringify({
+                    files: { 'dashboard.json': { content: JSON.stringify(db) } }
+                })
+            });
+            updateStatus('System Online');
         }
 
-        // 渲染列表
         function renderList(type) {
             const list = document.getElementById(type + 'List');
             const items = db[type] || [];
@@ -142,12 +159,11 @@
                         <div class="w-2 h-2 rounded-full" style="background: ${type==='todo' ? colors[item.level] : 'var(--primary)'}; box-shadow: 0 0 10px ${type==='todo' ? colors[item.level] : 'var(--primary)'}66"></div>
                         <span class="text-sm ${item.done ? 'done-text' : ''}">${item.text}</span>
                     </div>
-                    <button onclick="deleteItem('${type}', ${item.id})" class="opacity-0 group-hover:opacity-100 text-xs text-slate-500 hover:text-white transition-all">✕</button>
+                    <button onclick="deleteItem('${type}', ${item.id})" class="opacity-0 group-hover:opacity-100 text-xs text-slate-500">✕</button>
                 </li>
             `).join('');
         }
 
-        // 蘇打綠歌詞
         function refreshLyric() {
             if (!lyricsDB.length) return;
             currentLyric = lyricsDB[Math.floor(Math.random() * lyricsDB.length)];
@@ -159,7 +175,6 @@
                 </div>
             `;
             document.getElementById('video-container').classList.add('hidden');
-            document.getElementById('video-container').innerHTML = '';
         }
 
         function toggleVideo() {
@@ -170,42 +185,35 @@
             } else { v.classList.add('hidden'); v.innerHTML = ''; }
         }
 
-        // 基礎功能
         function togglePriority() { document.getElementById('priorityGroup').classList.toggle('hidden'); }
-
         async function addTodo(level) {
-            const input = document.getElementById('mainInput');
-            if (!input.value.trim()) return;
-            db.todo.push({ id: Date.now(), text: input.value, level, done: false });
+            const text = document.getElementById('mainInput').value;
+            if(!text) return;
+            db.todo.push({ id: Date.now(), text, level, done: false });
             db.todo.sort((a,b) => a.level - b.level);
             await finalizeAction();
         }
-
         async function addItem(type) {
-            const input = document.getElementById('mainInput');
-            if (!input.value.trim()) return;
-            db[type].push({ id: Date.now(), text: input.value, done: false });
+            const text = document.getElementById('mainInput').value;
+            if(!text) return;
+            db[type].push({ id: Date.now(), text, done: false });
             await finalizeAction();
         }
-
         async function toggleDone(type, id) {
             db[type] = db[type].map(i => i.id === id ? {...i, done: !i.done} : i);
             renderList(type);
             await syncCloud();
         }
-
         async function deleteItem(type, id) {
             db[type] = db[type].filter(i => i.id !== id);
-            renderList(type);
+            renderAll();
             await syncCloud();
         }
-
         async function clearCompleted(type) {
             db[type] = db[type].filter(i => !i.done);
-            renderList(type);
+            renderAll();
             await syncCloud();
         }
-
         async function finalizeAction() {
             document.getElementById('mainInput').value = '';
             document.getElementById('priorityGroup').classList.add('hidden');
@@ -213,7 +221,6 @@
             refreshLyric();
             await syncCloud();
         }
-
         function renderAll() { ['todo', 'idea', 'buy'].forEach(renderList); }
         function updateStatus(txt) { document.getElementById('status').innerText = txt; }
 
