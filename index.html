@@ -45,18 +45,19 @@
             90% { transform: translate(-5%, 5%); }
         }
 
-        /* Pixel 貓咪樣式 */
+        /* Pixel 貓咪樣式 - 提高 z-index 並優化顯示 */
         #pixel-cat {
             position: fixed;
             bottom: 10px;
-            left: -50px;
+            left: 50%; /* 改從中間開始 */
             width: 32px;
             height: 32px;
             image-rendering: pixelated;
             cursor: pointer;
-            z-index: 100;
+            z-index: 999; /* 確保在最上層 */
             transition: bottom 0.2s;
-            background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgBAMAAACshzhSAAAAD1BMVEUAAAD///8AAAD///8AAAD///+769SDAAAABHRSTlMAESIzVp64mAAAADtJREFUKM9jGAW0AsyYAnYwY6YpYAcLptYpYAcLptYpYAcLptYpYAcLptYpYAcLptYpYAcLptYpYAcLpgoA0mIOf98yXpAAAAAASUVORK5CYII=') no-repeat center;
+            /* 換了一個更清晰的純白像素貓圖案 */
+            background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgBAMAAACshzhSAAAAGFBMVEUAAAD///////////////////////////+MWny9AAAACHRSTlMAESEiM0R0p7uS7mIAAAA7SURBVCjPY2AYBaNgFIyCUUArwIwpYAcLptYpYAcLptYpYAcLptYpYAcLptYpYAcLptYpYAcLptYpYAcLpgoA0mIOf98yXpAAAAAASUVORK5CYII=') no-repeat center;
             background-size: contain;
         }
         #cat-bubble {
@@ -64,14 +65,15 @@
             bottom: 45px;
             background: white;
             color: black;
-            padding: 4px 8px;
+            padding: 4px 10px;
             border-radius: 8px;
-            font-size: 10px;
+            font-size: 11px;
             font-weight: bold;
             display: none;
-            z-index: 101;
+            z-index: 1000;
             pointer-events: none;
             white-space: nowrap;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
         #cat-bubble::after {
             content: "";
@@ -152,9 +154,9 @@
         let lyricsDB = [];
         let currentLyric = null;
 
-        // 貓咪邏輯變數
-        let catX = -50;
-        let catTargetX = 0;
+        // 貓咪邏輯變數 - 初始位置改為中間
+        let catX = window.innerWidth / 2;
+        let catTargetX = catX;
         let isWalking = true;
 
         function getToken() {
@@ -225,7 +227,6 @@
                 updateStatus('System Online');
                 
                 // 啟動貓咪
-                catTargetX = Math.random() * (window.innerWidth - 40);
                 moveCat();
             } catch (e) {
                 updateStatus('Sync Error');
@@ -237,6 +238,8 @@
         function moveCat() {
             const cat = document.getElementById('pixel-cat');
             const bubble = document.getElementById('cat-bubble');
+            if(!cat || !bubble) return;
+
             const screenWidth = window.innerWidth;
 
             if (isWalking) {
@@ -250,7 +253,7 @@
                 } else {
                     catX += (catTargetX > catX ? 1 : -1) * 0.5;
                     cat.style.left = catX + 'px';
-                    bubble.style.left = (catX + 5) + 'px';
+                    bubble.style.left = (catX - 10) + 'px';
                 }
             }
             requestAnimationFrame(moveCat);
@@ -378,4 +381,3 @@
     </script>
 </body>
 </html>
-
