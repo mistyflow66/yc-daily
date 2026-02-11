@@ -80,9 +80,9 @@
 
     <script>
         const CONFIG = {
-            TOKEN: '你的_GITHUB_TOKEN',
-            GIST_ID: '你的_GIST_ID',
-            LYRICS_URL: '你的_GITHUB_PAGES_LYRICS_JSON_網址'
+            TOKEN: '你的_GITHUB_TOKEN', // 請替換
+            GIST_ID: '你的_GIST_ID', // 請替換
+            LYRICS_URL: 'https://raw.githubusercontent.com/mistyflow66/yc-daily/refs/heads/main/lyrics.json'
         };
 
         let db = { todo: [], idea: [], buy: [] };
@@ -93,7 +93,7 @@
         async function init() {
             updateStatus('Loading Cloud...');
             try {
-                // 1. 抓歌詞 (GitHub Pages)
+                // 1. 抓歌詞
                 const lyricRes = await fetch(CONFIG.LYRICS_URL);
                 lyricsDB = await lyricRes.json();
                 
@@ -116,17 +116,21 @@
         // 雲端同步
         async function syncCloud() {
             updateStatus('Syncing...');
-            await fetch(`https://api.github.com/gists/${CONFIG.GIST_ID}`, {
-                method: 'PATCH',
-                headers: { Authorization: `token ${CONFIG.TOKEN}` },
-                body: JSON.stringify({
-                    files: { 'dashboard.json': { content: JSON.stringify(db) } }
-                })
-            });
-            updateStatus('System Online');
+            try {
+                await fetch(`https://api.github.com/gists/${CONFIG.GIST_ID}`, {
+                    method: 'PATCH',
+                    headers: { Authorization: `token ${CONFIG.TOKEN}` },
+                    body: JSON.stringify({
+                        files: { 'dashboard.json': { content: JSON.stringify(db) } }
+                    })
+                });
+                updateStatus('System Online');
+            } catch (e) {
+                updateStatus('Sync Error');
+            }
         }
 
-        // 渲染邏輯
+        // 渲染列表
         function renderList(type) {
             const list = document.getElementById(type + 'List');
             const items = db[type] || [];
@@ -138,13 +142,14 @@
                         <div class="w-2 h-2 rounded-full" style="background: ${type==='todo' ? colors[item.level] : 'var(--primary)'}; box-shadow: 0 0 10px ${type==='todo' ? colors[item.level] : 'var(--primary)'}66"></div>
                         <span class="text-sm ${item.done ? 'done-text' : ''}">${item.text}</span>
                     </div>
-                    <button onclick="deleteItem('${type}', ${item.id})" class="opacity-0 group-hover:opacity-100 text-xs text-slate-500">✕</button>
+                    <button onclick="deleteItem('${type}', ${item.id})" class="opacity-0 group-hover:opacity-100 text-xs text-slate-500 hover:text-white transition-all">✕</button>
                 </li>
             `).join('');
         }
 
-        // 蘇打綠模組
+        // 蘇打綠歌詞
         function refreshLyric() {
+            if (!lyricsDB.length) return;
             currentLyric = lyricsDB[Math.floor(Math.random() * lyricsDB.length)];
             document.getElementById('lyric-content').innerHTML = `
                 <div class="font-serif-tc text-lg mb-3 italic" style="color: var(--text)">「${currentLyric.quote}」</div>
@@ -154,6 +159,7 @@
                 </div>
             `;
             document.getElementById('video-container').classList.add('hidden');
+            document.getElementById('video-container').innerHTML = '';
         }
 
         function toggleVideo() {
@@ -166,22 +172,40 @@
 
         // 基礎功能
         function togglePriority() { document.getElementById('priorityGroup').classList.toggle('hidden'); }
+
         async function addTodo(level) {
-            const text = document.getElementById('mainInput').value;
-            db.todo.push({ id: Date.now(), text, level, done: false });
+            const input = document.getElementById('mainInput');
+            if (!input.value.trim()) return;
+            db.todo.push({ id: Date.now(), text: input.value, level, done: false });
             db.todo.sort((a,b) => a.level - b.level);
             await finalizeAction();
         }
+
         async function addItem(type) {
-            const text = document.getElementById('mainInput').value;
-            db[type].push({ id: Date.now(), text, done: false });
+            const input = document.getElementById('mainInput');
+            if (!input.value.trim()) return;
+            db[type].push({ id: Date.now(), text: input.value, done: false });
             await finalizeAction();
         }
+
         async function toggleDone(type, id) {
             db[type] = db[type].map(i => i.id === id ? {...i, done: !i.done} : i);
             renderList(type);
             await syncCloud();
         }
+
+        async function deleteItem(type, id) {
+            db[type] = db[type].filter(i => i.id !== id);
+            renderList(type);
+            await syncCloud();
+        }
+
+        async function clearCompleted(type) {
+            db[type] = db[type].filter(i => !i.done);
+            renderList(type);
+            await syncCloud();
+        }
+
         async function finalizeAction() {
             document.getElementById('mainInput').value = '';
             document.getElementById('priorityGroup').classList.add('hidden');
@@ -189,6 +213,7 @@
             refreshLyric();
             await syncCloud();
         }
+
         function renderAll() { ['todo', 'idea', 'buy'].forEach(renderList); }
         function updateStatus(txt) { document.getElementById('status').innerText = txt; }
 
