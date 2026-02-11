@@ -79,8 +79,6 @@
 
     <script>
         const CONFIG = {
-            // 安全考量：Token 不寫死在代碼中，而是從 localStorage 抓取
-            GIST_ID: '5b496142f75dec55cde88dd207f658a7',
             LYRICS_URL: 'https://raw.githubusercontent.com/mistyflow66/yc-daily/refs/heads/main/lyrics.json'
         };
 
@@ -88,43 +86,76 @@
         let lyricsDB = [];
         let currentLyric = null;
 
-        // 核心：獲取 Token 邏輯
+        // 1. 核心：獲取 Token
         function getToken() {
             let token = localStorage.getItem('GIST_TOKEN');
             if (!token) {
-                token = prompt("請輸入您的 GitHub Personal Access Token (ghp_...):\n(此代碼僅存於您的瀏覽器快取中，不會上傳至 Repo)");
+                token = prompt("請輸入您的 GitHub Personal Access Token (ghp_...):");
                 if (token) localStorage.setItem('GIST_TOKEN', token);
             }
             return token;
         }
 
+        // 2. 核心：獲取 Gist ID
+        function getGistId() {
+            let id = localStorage.getItem('GIST_ID_KEY');
+            if (!id) {
+                id = prompt("請輸入您的 Gist ID (網址最後那一串亂碼):");
+                if (id) localStorage.setItem('GIST_ID_KEY', id);
+            }
+            return id;
+        }
+
+        // 3. 重置
         function resetToken() {
             localStorage.removeItem('GIST_TOKEN');
+            localStorage.removeItem('GIST_ID_KEY');
+            localStorage.removeItem('LYRIC_CACHE');
+            localStorage.removeItem('LYRIC_UPDATE_TIME');
             location.reload();
         }
 
-        // 初始化
+        // 4. 初始化 (24h 快取)
         async function init() {
-            updateStatus('Checking Token...');
+            updateStatus('Initializing...');
             const token = getToken();
-            if (!token) {
-                updateStatus('Need Token');
+            const gistId = getGistId();
+            
+            if (!token || !gistId) {
+                updateStatus('Setup Required');
                 return;
             }
 
             try {
-                // 1. 抓歌詞 (這不需要 Token，因為 Repo 是公開的)
-                const lyricRes = await fetch(CONFIG.LYRICS_URL);
-                lyricsDB = await lyricRes.json();
-                
-                // 2. 抓待辦 (使用手動輸入的 Token)
-                const gistRes = await fetch(`https://api.github.com/gists/${CONFIG.GIST_ID}`, {
+                // 歌詞快取
+                const lastLyricUpdate = localStorage.getItem('LYRIC_UPDATE_TIME');
+                const cachedLyrics = localStorage.getItem('LYRIC_CACHE');
+                const now = new Date().getTime();
+                const oneDay = 24 * 60 * 60 * 1000; 
+
+                if (cachedLyrics && lastLyricUpdate && (now - lastLyricUpdate < oneDay)) {
+                    lyricsDB = JSON.parse(cachedLyrics);
+                    console.log("Using cached lyrics.");
+                } else {
+                    updateStatus('Updating Lyrics...');
+                    const lyricRes = await fetch(CONFIG.LYRICS_URL);
+                    lyricsDB = await lyricRes.json();
+                    localStorage.setItem('LYRIC_CACHE', JSON.stringify(lyricsDB));
+                    localStorage.setItem('LYRIC_UPDATE_TIME', now.toString());
+                }
+
+                // Gist 同步
+                updateStatus('Syncing Cloud...');
+                const gistRes = await fetch(`https://api.github.com/gists/${gistId}`, {
                     headers: { Authorization: `token ${token}` }
                 });
                 
                 if (gistRes.status === 401) {
-                    alert("Token 無效，請重新輸入。");
-                    resetToken();
+                    alert("Token 無效，請重置。");
+                    return;
+                } else if (gistRes.status === 404) {
+                    alert("找不到 Gist ID。");
+                    return;
                 }
 
                 const gistData = await gistRes.json();
@@ -139,21 +170,31 @@
             }
         }
 
+        // 5. 同步雲端
         async function syncCloud() {
             const token = getToken();
+            const gistId = getGistId();
+            if (!token || !gistId) return;
+
             updateStatus('Syncing...');
-            await fetch(`https://api.github.com/gists/${CONFIG.GIST_ID}`, {
-                method: 'PATCH',
-                headers: { Authorization: `token ${token}` },
-                body: JSON.stringify({
-                    files: { 'dashboard.json': { content: JSON.stringify(db) } }
-                })
-            });
-            updateStatus('System Online');
+            try {
+                const res = await fetch(`https://api.github.com/gists/${gistId}`, {
+                    method: 'PATCH',
+                    headers: { Authorization: `token ${token}` },
+                    body: JSON.stringify({
+                        files: { 'dashboard.json': { content: JSON.stringify(db) } }
+                    })
+                });
+                if (res.ok) updateStatus('System Online');
+            } catch (e) {
+                updateStatus('Sync Error');
+            }
         }
 
+        // 6. 渲染與邏輯
         function renderList(type) {
             const list = document.getElementById(type + 'List');
+            if (!list) return;
             const items = db[type] || [];
             const colors = { 1: 'var(--secondary)', 2: 'var(--accent-yellow)', 3: 'var(--accent-green)' };
             
@@ -163,7 +204,7 @@
                         <div class="w-2 h-2 rounded-full" style="background: ${type==='todo' ? colors[item.level] : 'var(--primary)'}; box-shadow: 0 0 10px ${type==='todo' ? colors[item.level] : 'var(--primary)'}66"></div>
                         <span class="text-sm ${item.done ? 'done-text' : ''}">${item.text}</span>
                     </div>
-                    <button onclick="deleteItem('${type}', ${item.id})" class="opacity-0 group-hover:opacity-100 text-xs text-slate-500">✕</button>
+                    <button onclick="deleteItem('${type}', ${item.id})" class="opacity-0 group-hover:opacity-100 text-xs text-slate-500 hover:text-white">✕</button>
                 </li>
             `).join('');
         }
@@ -172,10 +213,10 @@
             if (!lyricsDB.length) return;
             currentLyric = lyricsDB[Math.floor(Math.random() * lyricsDB.length)];
             document.getElementById('lyric-content').innerHTML = `
-                <div class="font-serif-tc text-lg mb-3 italic" style="color: var(--text)">「${currentLyric.quote}」</div>
+                <div class="font-serif-tc text-lg mb-3 italic">「${currentLyric.quote}」</div>
                 <div class="flex justify-between items-center">
                     <span class="text-[10px] uppercase tracking-widest" style="color: var(--text-muted)">// ${currentLyric.title}</span>
-                    <button onclick="toggleVideo()" class="text-[10px] font-bold hover:underline" style="color: var(--accent-green)">DISPLAY_FULL</button>
+                    <button onclick="toggleVideo()" class="text-[10px] font-bold" style="color: var(--accent-green)">DISPLAY_FULL</button>
                 </div>
             `;
             document.getElementById('video-container').classList.add('hidden');
@@ -190,6 +231,7 @@
         }
 
         function togglePriority() { document.getElementById('priorityGroup').classList.toggle('hidden'); }
+        
         async function addTodo(level) {
             const text = document.getElementById('mainInput').value;
             if(!text) return;
@@ -197,27 +239,32 @@
             db.todo.sort((a,b) => a.level - b.level);
             await finalizeAction();
         }
+
         async function addItem(type) {
             const text = document.getElementById('mainInput').value;
             if(!text) return;
             db[type].push({ id: Date.now(), text, done: false });
             await finalizeAction();
         }
+
         async function toggleDone(type, id) {
             db[type] = db[type].map(i => i.id === id ? {...i, done: !i.done} : i);
             renderList(type);
             await syncCloud();
         }
+
         async function deleteItem(type, id) {
             db[type] = db[type].filter(i => i.id !== id);
             renderAll();
             await syncCloud();
         }
+
         async function clearCompleted(type) {
             db[type] = db[type].filter(i => !i.done);
             renderAll();
             await syncCloud();
         }
+
         async function finalizeAction() {
             document.getElementById('mainInput').value = '';
             document.getElementById('priorityGroup').classList.add('hidden');
@@ -225,6 +272,7 @@
             refreshLyric();
             await syncCloud();
         }
+
         function renderAll() { ['todo', 'idea', 'buy'].forEach(renderList); }
         function updateStatus(txt) { document.getElementById('status').innerText = txt; }
 
