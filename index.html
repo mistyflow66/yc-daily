@@ -25,44 +25,30 @@
             position: relative;
             overflow-x: hidden;
         }
-        /* 動態噪點效果 Grainy Effect */
-        body::before {
-            content: "";
-            position: fixed;
-            top: -100%; left: -100%; width: 300%; height: 300%;
-            pointer-events: none;
-            z-index: 50;
-            opacity: 0.06;
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-            animation: grain 8s steps(10) infinite;
-        }
-        @keyframes grain {
-            0%, 100% { transform: translate(0, 0); }
-            10% { transform: translate(-5%, -10%); }
-            30% { transform: translate(-10%, 5%); }
-            50% { transform: translate(5%, -5%); }
-            70% { transform: translate(10%, 10%); }
-            90% { transform: translate(-5%, 5%); }
-        }
+        
+        .font-serif-tc { font-family: 'Noto Serif TC', serif; }
+        .surface { background-color: var(--surface); border: 1px solid rgba(255,255,255,0.05); }
+        .done-text { text-decoration: line-through; color: var(--text-muted); opacity: 0.5; }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
 
-        /* Pixel 貓咪樣式 - 提高 z-index 並優化顯示 */
+        /* Pixel 貓咪樣式 - 改為絕對定位在 main 底部 */
         #pixel-cat {
-            position: fixed;
-            bottom: 10px;
-            left: 50%; /* 改從中間開始 */
+            position: absolute;
+            bottom: -50px; /* 位於 Shopping 下方的空白處 */
+            left: 50%;
             width: 32px;
             height: 32px;
             image-rendering: pixelated;
             cursor: pointer;
-            z-index: 999; /* 確保在最上層 */
-            transition: bottom 0.2s;
-            /* 換了一個更清晰的純白像素貓圖案 */
+            z-index: 10;
+            transition: transform 0.2s, bottom 0.2s;
             background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgBAMAAACshzhSAAAAGFBMVEUAAAD///////////////////////////+MWny9AAAACHRSTlMAESEiM0R0p7uS7mIAAAA7SURBVCjPY2AYBaNgFIyCUUArwIwpYAcLptYpYAcLptYpYAcLptYpYAcLptYpYAcLptYpYAcLptYpYAcLpgoA0mIOf98yXpAAAAAASUVORK5CYII=') no-repeat center;
             background-size: contain;
         }
         #cat-bubble {
-            position: fixed;
-            bottom: 45px;
+            position: absolute;
+            bottom: -15px; /* 對應貓咪位置 */
             background: white;
             color: black;
             padding: 4px 10px;
@@ -70,7 +56,7 @@
             font-size: 11px;
             font-weight: bold;
             display: none;
-            z-index: 1000;
+            z-index: 11;
             pointer-events: none;
             white-space: nowrap;
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
@@ -83,12 +69,8 @@
             border-style: solid;
             border-color: white transparent transparent;
         }
-
-        .font-serif-tc { font-family: 'Noto Serif TC', serif; }
-        .surface { background-color: var(--surface); border: 1px solid rgba(255,255,255,0.05); }
-        .done-text { text-decoration: line-through; color: var(--text-muted); opacity: 0.5; }
-        ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
+        /* 為了放貓咪，增加 main 的底部間距 */
+        main { position: relative; padding-bottom: 80px; }
     </style>
 </head>
 <body class="p-4 pb-10">
@@ -139,11 +121,11 @@
                 <h2 class="text-[10px] font-bold tracking-widest uppercase mb-3 px-2" style="color: var(--accent-yellow)">🛒 Shopping</h2>
                 <ul id="buyList" class="space-y-2"></ul>
             </section>
+            
+            <div id="pixel-cat" onclick="meow()"></div>
+            <div id="cat-bubble">MEOW!</div>
         </main>
     </div>
-
-    <div id="pixel-cat" onclick="meow()"></div>
-    <div id="cat-bubble">MEOW!</div>
 
     <script>
         const CONFIG = {
@@ -154,9 +136,9 @@
         let lyricsDB = [];
         let currentLyric = null;
 
-        // 貓咪邏輯變數 - 初始位置改為中間
-        let catX = window.innerWidth / 2;
-        let catTargetX = catX;
+        // 貓咪邏輯變數
+        let catX = 0;
+        let catTargetX = 0;
         let isWalking = true;
 
         function getToken() {
@@ -227,6 +209,9 @@
                 updateStatus('System Online');
                 
                 // 啟動貓咪
+                const mainWidth = document.querySelector('main').offsetWidth;
+                catX = mainWidth / 2;
+                catTargetX = catX;
                 moveCat();
             } catch (e) {
                 updateStatus('Sync Error');
@@ -234,24 +219,24 @@
             }
         }
 
-        // 貓咪移動邏輯
         function moveCat() {
             const cat = document.getElementById('pixel-cat');
             const bubble = document.getElementById('cat-bubble');
-            if(!cat || !bubble) return;
+            const main = document.querySelector('main');
+            if(!cat || !main) return;
 
-            const screenWidth = window.innerWidth;
+            const mainWidth = main.offsetWidth;
 
             if (isWalking) {
                 if (Math.abs(catX - catTargetX) < 2) {
                     isWalking = false;
                     setTimeout(() => {
-                        catTargetX = Math.random() * (screenWidth - 40);
+                        catTargetX = Math.random() * (mainWidth - 40);
                         isWalking = true;
                         cat.style.transform = catTargetX > catX ? 'scaleX(-1)' : 'scaleX(1)';
                     }, Math.random() * 5000 + 2000);
                 } else {
-                    catX += (catTargetX > catX ? 1 : -1) * 0.5;
+                    catX += (catTargetX > catX ? 0.5 : -0.5);
                     cat.style.left = catX + 'px';
                     bubble.style.left = (catX - 10) + 'px';
                 }
@@ -266,8 +251,8 @@
             bubble.style.display = 'block';
             setTimeout(() => bubble.style.display = 'none', 2000);
             const cat = document.getElementById('pixel-cat');
-            cat.style.bottom = '25px';
-            setTimeout(() => cat.style.bottom = '10px', 200);
+            cat.style.transform += ' translateY(-10px)';
+            setTimeout(() => cat.style.transform = cat.style.transform.replace(' translateY(-10px)', ''), 200);
         }
 
         async function syncCloud() {
@@ -381,3 +366,4 @@
     </script>
 </body>
 </html>
+
