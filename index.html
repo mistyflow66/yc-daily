@@ -25,52 +25,103 @@
             position: relative;
             overflow-x: hidden;
         }
-        
+
         .font-serif-tc { font-family: 'Noto Serif TC', serif; }
         .surface { background-color: var(--surface); border: 1px solid rgba(255,255,255,0.05); }
         .done-text { text-decoration: line-through; color: var(--text-muted); opacity: 0.5; }
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
 
-        /* Pixel 貓咪樣式 - 改為絕對定位在 main 底部 */
+        /* --- 貓咪樣式 --- */
         #pixel-cat {
             position: absolute;
-            bottom: -50px; /* 位於 Shopping 下方的空白處 */
-            left: 50%;
-            width: 32px;
-            height: 32px;
-            image-rendering: pixelated;
+            bottom: -50px; 
+            left: 50px;
+            width: 30px;
+            height: 20px;
+            background: #FFFFFF;
+            border-radius: 10px 10px 5px 5px;
             cursor: pointer;
-            z-index: 10;
-            transition: transform 0.2s, bottom 0.2s;
-            background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgBAMAAACshzhSAAAAGFBMVEUAAAD///////////////////////////+MWny9AAAACHRSTlMAESEiM0R0p7uS7mIAAAA7SURBVCjPY2AYBaNgFIyCUUArwIwpYAcLptYpYAcLptYpYAcLptYpYAcLptYpYAcLptYpYAcLptYpYAcLpgoA0mIOf98yXpAAAAAASUVORK5CYII=') no-repeat center;
-            background-size: contain;
+            z-index: 100;
+            transition: transform 0.2s linear;
+            animation: catBounce 0.6s infinite alternate;
+            user-select: none;
+            -webkit-user-drag: none;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
         }
+
+        #pixel-cat::before, #pixel-cat::after {
+            content: "";
+            position: absolute;
+            top: -8px;
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 10px solid #FFFFFF;
+        }
+        #pixel-cat::before { left: 2px; transform: rotate(-10deg); }
+        #pixel-cat::after { right: 2px; transform: rotate(10deg); }
+
+        #cat-eyes {
+            position: absolute;
+            top: 6px; left: 5px; width: 20px;
+            display: flex; justify-content: space-around;
+            pointer-events: none;
+            transition: transform 0.1s;
+        }
+        .eye { width: 4px; height: 4px; background: #181225; border-radius: 50%; }
+
+        #cat-tail {
+            position: absolute;
+            right: -8px; bottom: 5px;
+            width: 12px; height: 6px;
+            background: #FFFFFF;
+            border-radius: 0 5px 5px 0;
+            transform-origin: left;
+            animation: tailWag 0.4s infinite alternate;
+        }
+
+        @keyframes catBounce { from { transform: translateY(0); } to { transform: translateY(-3px); } }
+        @keyframes tailWag { from { transform: rotate(0deg); } to { transform: rotate(30deg); } }
+
+        /* --- 修正後的對話框樣式，移除細黑線 --- */
         #cat-bubble {
             position: absolute;
-            bottom: -15px; /* 對應貓咪位置 */
+            bottom: 35px; 
+            left: 50%;
+            transform: translateX(-20%);
             background: white;
             color: black;
-            padding: 4px 10px;
-            border-radius: 8px;
+            padding: 5px 12px;
+            border-radius: 10px;
             font-size: 11px;
             font-weight: bold;
             display: none;
-            z-index: 11;
+            z-index: 110;
             pointer-events: none;
             white-space: nowrap;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            /* 移除可能導致細線的陰影，改用較柔和的設定 */
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            border: none; /* 確保沒有邊框 */
         }
+
         #cat-bubble::after {
             content: "";
             position: absolute;
-            bottom: -5px; left: 10px;
-            border-width: 5px 5px 0;
+            bottom: -5px; /* 向上移動 1px 確保與主體重疊，消除細縫 */
+            left: 15px;
+            width: 0;
+            height: 0;
             border-style: solid;
-            border-color: white transparent transparent;
+            border-width: 6px 6px 0 0;
+            border-color: white transparent transparent transparent;
+            display: block;
         }
-        /* 為了放貓咪，增加 main 的底部間距 */
-        main { position: relative; padding-bottom: 80px; }
+
+
+        main { position: relative; padding-bottom: 100px; }
     </style>
 </head>
 <body class="p-4 pb-10">
@@ -121,124 +172,76 @@
                 <h2 class="text-[10px] font-bold tracking-widest uppercase mb-3 px-2" style="color: var(--accent-yellow)">🛒 Shopping</h2>
                 <ul id="buyList" class="space-y-2"></ul>
             </section>
-            
-            <div id="pixel-cat" onclick="meow()"></div>
-            <div id="cat-bubble">MEOW!</div>
+
+            <div id="pixel-cat" onclick="meow()">
+                <div id="cat-eyes">
+                    <div class="eye"></div>
+                    <div class="eye"></div>
+                </div>
+                <div id="cat-tail"></div>
+                <div id="cat-bubble">MEOW!</div>
+            </div>
         </main>
     </div>
 
     <script>
-        const CONFIG = {
-            LYRICS_URL: 'https://raw.githubusercontent.com/mistyflow66/yc-daily/refs/heads/main/lyrics.json'
-        };
-
+        const CONFIG = { LYRICS_URL: 'https://raw.githubusercontent.com/mistyflow66/yc-daily/refs/heads/main/lyrics.json' };
         let db = { todo: [], idea: [], buy: [] };
         let lyricsDB = [];
         let currentLyric = null;
-
-        // 貓咪邏輯變數
-        let catX = 0;
-        let catTargetX = 0;
-        let isWalking = true;
+        let catX = 50, catTargetX = 50, isWalking = true, meowTimer = null;
 
         function getToken() {
-            let token = localStorage.getItem('GIST_TOKEN');
-            if (!token) {
-                token = prompt("請輸入您的 GitHub Personal Access Token (ghp_...):");
-                if (token) localStorage.setItem('GIST_TOKEN', token);
-            }
-            return token;
+            let t = localStorage.getItem('GIST_TOKEN');
+            if (!t) { t = prompt("請輸入您的 GitHub Token:"); if (t) localStorage.setItem('GIST_TOKEN', t); }
+            return t;
         }
-
         function getGistId() {
-            let id = localStorage.getItem('GIST_ID_KEY');
-            if (!id) {
-                id = prompt("請輸入您的 Gist ID (網址最後那一串亂碼):");
-                if (id) localStorage.setItem('GIST_ID_KEY', id);
-            }
-            return id;
+            let i = localStorage.getItem('GIST_ID_KEY');
+            if (!i) { i = prompt("請輸入您的 Gist ID:"); if (i) localStorage.setItem('GIST_ID_KEY', i); }
+            return i;
         }
-
-        function resetToken() {
-            localStorage.removeItem('GIST_TOKEN');
-            localStorage.removeItem('GIST_ID_KEY');
-            localStorage.removeItem('LYRIC_CACHE');
-            localStorage.removeItem('LYRIC_UPDATE_TIME');
-            location.reload();
-        }
+        function resetToken() { localStorage.clear(); location.reload(); }
 
         async function init() {
             updateStatus('Initializing...');
-            const token = getToken();
-            const gistId = getGistId();
-
-            if (!token || !gistId) {
-                updateStatus('Setup Required');
-                return;
-            }
+            const token = getToken(); const gistId = getGistId();
+            if (!token || !gistId) { updateStatus('Setup Required'); setTimeout(startCatAnimation, 500); return; }
 
             try {
-                const lastLyricUpdate = localStorage.getItem('LYRIC_UPDATE_TIME');
-                const cachedLyrics = localStorage.getItem('LYRIC_CACHE');
-                const now = new Date().getTime();
-                const oneDay = 24 * 60 * 60 * 1000; 
+                const lRes = await fetch(CONFIG.LYRICS_URL); lyricsDB = await lRes.json();
+                const gRes = await fetch(`https://api.github.com/gists/${gistId}`, { headers: { Authorization: `token ${token}` } });
+                const gData = await gRes.json(); db = JSON.parse(gData.files['dashboard.json'].content);
+                renderAll(); refreshLyric(); updateStatus('System Online');
+            } catch (e) { updateStatus('Sync Error'); }
+            setTimeout(startCatAnimation, 500);
+        }
 
-                if (cachedLyrics && lastLyricUpdate && (now - lastLyricUpdate < oneDay)) {
-                    lyricsDB = JSON.parse(cachedLyrics);
-                } else {
-                    updateStatus('Updating Lyrics...');
-                    const lyricRes = await fetch(CONFIG.LYRICS_URL);
-                    lyricsDB = await lyricRes.json();
-                    localStorage.setItem('LYRIC_CACHE', JSON.stringify(lyricsDB));
-                    localStorage.setItem('LYRIC_UPDATE_TIME', now.toString());
-                }
-
-                updateStatus('Syncing Cloud...');
-                const gistRes = await fetch(`https://api.github.com/gists/${gistId}`, {
-                    headers: { Authorization: `token ${token}` }
-                });
-
-                if (gistRes.status === 401) { alert("Token 無效。"); return; }
-                else if (gistRes.status === 404) { alert("找不到 Gist ID。"); return; }
-
-                const gistData = await gistRes.json();
-                db = JSON.parse(gistData.files['dashboard.json'].content);
-
-                renderAll();
-                refreshLyric();
-                updateStatus('System Online');
-                
-                // 啟動貓咪
-                const mainWidth = document.querySelector('main').offsetWidth;
-                catX = mainWidth / 2;
-                catTargetX = catX;
-                moveCat();
-            } catch (e) {
-                updateStatus('Sync Error');
-                console.error(e);
-            }
+        function startCatAnimation() {
+            const main = document.querySelector('main');
+            if (!main || main.offsetWidth === 0) { setTimeout(startCatAnimation, 100); return; }
+            catTargetX = (main.offsetWidth - 40) * Math.random();
+            moveCat();
         }
 
         function moveCat() {
             const cat = document.getElementById('pixel-cat');
-            const bubble = document.getElementById('cat-bubble');
             const main = document.querySelector('main');
             if(!cat || !main) return;
-
-            const mainWidth = main.offsetWidth;
+            const mainWidth = main.offsetWidth - 40;
 
             if (isWalking) {
                 if (Math.abs(catX - catTargetX) < 2) {
                     isWalking = false;
                     setTimeout(() => {
-                        catTargetX = Math.random() * (mainWidth - 40);
+                        catTargetX = Math.random() * mainWidth;
                         isWalking = true;
                         cat.style.transform = catTargetX > catX ? 'scaleX(-1)' : 'scaleX(1)';
-                    }, Math.random() * 5000 + 2000);
+                    }, Math.random() * 4000 + 2000);
                 } else {
-                    catX += (catTargetX > catX ? 0.5 : -0.5);
+                    catX += (catTargetX > catX ? 0.7 : -0.7);
+                    catX = Math.max(0, Math.min(mainWidth, catX));
                     cat.style.left = catX + 'px';
-                    bubble.style.left = (catX - 10) + 'px';
                 }
             }
             requestAnimationFrame(moveCat);
@@ -246,45 +249,35 @@
 
         function meow() {
             const bubble = document.getElementById('cat-bubble');
-            const messages = ["MEOW!", "喵的咧～", "oh oh oh oh...", "我只要只屬於我的宇宙♪", "想睡覺...", "罐頭？"];
-            bubble.innerText = messages[Math.floor(Math.random() * messages.length)];
+            const msgs = ["MEOW!", "喵的咧～", "想要罐罐...", "我巡邏中", "工作加油！", "不要摸我～"];
+            bubble.innerText = msgs[Math.floor(Math.random() * msgs.length)];
             bubble.style.display = 'block';
-            setTimeout(() => bubble.style.display = 'none', 2000);
-            const cat = document.getElementById('pixel-cat');
-            cat.style.transform += ' translateY(-10px)';
-            setTimeout(() => cat.style.transform = cat.style.transform.replace(' translateY(-10px)', ''), 200);
+            if(meowTimer) clearTimeout(meowTimer);
+            meowTimer = setTimeout(() => bubble.style.display = 'none', 4000);
+            
+            const eyes = document.getElementById('cat-eyes');
+            eyes.style.transform = 'scaleY(0.1)';
+            setTimeout(() => eyes.style.transform = 'scaleY(1)', 150);
         }
 
         async function syncCloud() {
-            const token = getToken();
-            const gistId = getGistId();
-            if (!token || !gistId) return;
-            updateStatus('Syncing...');
-            try {
-                const res = await fetch(`https://api.github.com/gists/${gistId}`, {
-                    method: 'PATCH',
-                    headers: { Authorization: `token ${token}` },
-                    body: JSON.stringify({
-                        files: { 'dashboard.json': { content: JSON.stringify(db) } }
-                    })
-                });
-                if (res.ok) updateStatus('System Online');
-            } catch (e) { updateStatus('Sync Error'); }
+            const t = getToken(); const i = getGistId(); if (!t || !i) return;
+            try { await fetch(`https://api.github.com/gists/${i}`, {
+                method: 'PATCH', headers: { Authorization: `token ${t}` },
+                body: JSON.stringify({ files: { 'dashboard.json': { content: JSON.stringify(db) } } })
+            }); } catch (e) {}
         }
 
         function renderList(type) {
-            const list = document.getElementById(type + 'List');
-            if (!list) return;
-            const items = db[type] || [];
+            const list = document.getElementById(type + 'List'); if (!list) return;
             const colors = { 1: 'var(--secondary)', 2: 'var(--accent-yellow)', 3: 'var(--accent-green)' };
-
-            list.innerHTML = items.map(item => `
-                <li class="surface p-4 rounded-2xl flex justify-between items-center group animate-in fade-in duration-500">
+            list.innerHTML = (db[type] || []).map(item => `
+                <li class="surface p-4 rounded-2xl flex justify-between items-center group">
                     <div class="flex items-center gap-3 flex-1 cursor-pointer" onclick="toggleDone('${type}', ${item.id})">
-                        <div class="w-2 h-2 rounded-full" style="background: ${type==='todo' ? colors[item.level] : 'var(--primary)'}; box-shadow: 0 0 10px ${type==='todo' ? colors[item.level] : 'var(--primary)'}66"></div>
+                        <div class="w-2 h-2 rounded-full" style="background: ${type==='todo' ? colors[item.level] : 'var(--primary)'}"></div>
                         <span class="text-sm ${item.done ? 'done-text' : ''}">${item.text}</span>
                     </div>
-                    <button onclick="deleteItem('${type}', ${item.id})" class="opacity-0 group-hover:opacity-100 text-xs text-slate-500 hover:text-white">✕</button>
+                    <button onclick="deleteItem('${type}', ${item.id})" class="opacity-0 group-hover:opacity-100 text-xs text-slate-500">✕</button>
                 </li>
             `).join('');
         }
@@ -292,17 +285,8 @@
         function refreshLyric() {
             if (!lyricsDB.length) return;
             currentLyric = lyricsDB[Math.floor(Math.random() * lyricsDB.length)];
-            const isEnglish = !/[\u4e00-\u9fa5]/.test(currentLyric.quote);
-            const openQ = isEnglish ? '“' : '「';
-            const closeQ = isEnglish ? '”' : '」';
-            document.getElementById('lyric-content').innerHTML = `
-                <div class="font-serif-tc text-lg mb-3 italic">${openQ}${currentLyric.quote}${closeQ}</div>
-                <div class="flex justify-between items-center">
-                    <span class="text-[10px] uppercase tracking-widest" style="color: var(--text-muted)">// ${currentLyric.title}</span>
-                    <button onclick="toggleVideo()" class="text-[10px] font-bold" style="color: var(--accent-green)">DISPLAY_FULL</button>
-                </div>
-            `;
-            document.getElementById('video-container').classList.add('hidden');
+            const isEn = !/[一-龥]/.test(currentLyric.quote);
+            document.getElementById('lyric-content').innerHTML = `<div class="font-serif-tc text-lg mb-3 italic">${isEn ? '“' : '「'}${currentLyric.quote}${isEn ? '”' : '」'}</div><div class="flex justify-between items-center"><span class="text-[10px] uppercase tracking-widest text-muted">// ${currentLyric.title}</span><button onclick="toggleVideo()" class="text-[10px] font-bold text-accent-green">DISPLAY_FULL</button></div>`;
         }
 
         function toggleVideo() {
@@ -314,51 +298,12 @@
         }
 
         function togglePriority() { document.getElementById('priorityGroup').classList.toggle('hidden'); }
-        async function addTodo(level) {
-            const text = document.getElementById('mainInput').value;
-            if(!text) return;
-            db.todo.push({ id: Date.now(), text, level, done: false });
-            db.todo.sort((a,b) => a.level - b.level);
-            await finalizeAction();
-        }
-        async function addItem(type) {
-            const text = document.getElementById('mainInput').value;
-            if(!text) return;
-            db[type].push({ id: Date.now(), text, done: false });
-            await finalizeAction();
-        }
-        async function toggleDone(type, id) {
-            db[type] = db[type].map(i => i.id === id ? {...i, done: !i.done} : i);
-            renderList(type);
-            await syncCloud();
-        }
-        async function deleteItem(type, id) {
-            db[type] = db[type].filter(i => i.id !== id);
-            renderAll();
-            await syncCloud();
-        }
-
-        async function clearCompleted() {
-            const types = ['todo', 'idea', 'buy'];
-            types.forEach(type => {
-                if (db[type]) {
-                    db[type] = db[type].filter(i => !i.done);
-                }
-            });
-            renderAll();
-            await syncCloud();
-            updateStatus('All Cleared');
-            setTimeout(() => updateStatus('System Online'), 2000);
-        }
-
-        async function finalizeAction() {
-            document.getElementById('mainInput').value = '';
-            document.getElementById('priorityGroup').classList.add('hidden');
-            renderAll();
-            refreshLyric();
-            await syncCloud();
-        }
-
+        async function addTodo(l) { const t = document.getElementById('mainInput').value; if(!t) return; db.todo.push({ id: Date.now(), text: t, level: l, done: false }); db.todo.sort((a,b) => a.level - b.level); await finalizeAction(); }
+        async function addItem(type) { const t = document.getElementById('mainInput').value; if(!t) return; db[type].push({ id: Date.now(), text: t, done: false }); await finalizeAction(); }
+        async function toggleDone(t, id) { db[t] = db[t].map(i => i.id === id ? {...i, done: !i.done} : i); renderList(t); await syncCloud(); }
+        async function deleteItem(t, id) { db[t] = db[t].filter(i => i.id !== id); renderAll(); await syncCloud(); }
+        async function clearCompleted() { ['todo', 'idea', 'buy'].forEach(t => { if (db[t]) db[t] = db[t].filter(i => !i.done); }); renderAll(); await syncCloud(); }
+        async function finalizeAction() { document.getElementById('mainInput').value = ''; document.getElementById('priorityGroup').classList.add('hidden'); renderAll(); refreshLyric(); await syncCloud(); }
         function renderAll() { ['todo', 'idea', 'buy'].forEach(renderList); }
         function updateStatus(txt) { document.getElementById('status').innerText = txt; }
 
