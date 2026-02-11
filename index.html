@@ -18,7 +18,22 @@
             --accent-pink: #E5A3C7; --accent-blue: #3D57FF;
             --text: #F3F0FF; --text-muted: #B8AFCF;
         }
-        body { background-color: var(--bg); color: var(--text); font-family: sans-serif; }
+        body { 
+            background-color: var(--bg); 
+            color: var(--text); 
+            font-family: sans-serif;
+            position: relative;
+        }
+        /* Grainy Effect Overlay */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 50;
+            opacity: 0.04;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
         .font-serif-tc { font-family: 'Noto Serif TC', serif; }
         .surface { background-color: var(--surface); border: 1px solid rgba(255,255,255,0.05); }
         .done-text { text-decoration: line-through; color: var(--text-muted); opacity: 0.5; }
@@ -86,7 +101,6 @@
         let lyricsDB = [];
         let currentLyric = null;
 
-        // 1. 核心：獲取 Token
         function getToken() {
             let token = localStorage.getItem('GIST_TOKEN');
             if (!token) {
@@ -96,7 +110,6 @@
             return token;
         }
 
-        // 2. 核心：獲取 Gist ID
         function getGistId() {
             let id = localStorage.getItem('GIST_ID_KEY');
             if (!id) {
@@ -106,7 +119,6 @@
             return id;
         }
 
-        // 3. 重置
         function resetToken() {
             localStorage.removeItem('GIST_TOKEN');
             localStorage.removeItem('GIST_ID_KEY');
@@ -115,7 +127,6 @@
             location.reload();
         }
 
-        // 4. 初始化 (24h 快取)
         async function init() {
             updateStatus('Initializing...');
             const token = getToken();
@@ -127,7 +138,6 @@
             }
 
             try {
-                // 歌詞快取
                 const lastLyricUpdate = localStorage.getItem('LYRIC_UPDATE_TIME');
                 const cachedLyrics = localStorage.getItem('LYRIC_CACHE');
                 const now = new Date().getTime();
@@ -135,7 +145,6 @@
 
                 if (cachedLyrics && lastLyricUpdate && (now - lastLyricUpdate < oneDay)) {
                     lyricsDB = JSON.parse(cachedLyrics);
-                    console.log("Using cached lyrics.");
                 } else {
                     updateStatus('Updating Lyrics...');
                     const lyricRes = await fetch(CONFIG.LYRICS_URL);
@@ -144,19 +153,13 @@
                     localStorage.setItem('LYRIC_UPDATE_TIME', now.toString());
                 }
 
-                // Gist 同步
                 updateStatus('Syncing Cloud...');
                 const gistRes = await fetch(`https://api.github.com/gists/${gistId}`, {
                     headers: { Authorization: `token ${token}` }
                 });
                 
-                if (gistRes.status === 401) {
-                    alert("Token 無效，請重置。");
-                    return;
-                } else if (gistRes.status === 404) {
-                    alert("找不到 Gist ID。");
-                    return;
-                }
+                if (gistRes.status === 401) { alert("Token 無效。"); return; }
+                else if (gistRes.status === 404) { alert("找不到 Gist ID。"); return; }
 
                 const gistData = await gistRes.json();
                 db = JSON.parse(gistData.files['dashboard.json'].content);
@@ -170,12 +173,10 @@
             }
         }
 
-        // 5. 同步雲端
         async function syncCloud() {
             const token = getToken();
             const gistId = getGistId();
             if (!token || !gistId) return;
-
             updateStatus('Syncing...');
             try {
                 const res = await fetch(`https://api.github.com/gists/${gistId}`, {
@@ -186,12 +187,9 @@
                     })
                 });
                 if (res.ok) updateStatus('System Online');
-            } catch (e) {
-                updateStatus('Sync Error');
-            }
+            } catch (e) { updateStatus('Sync Error'); }
         }
 
-        // 6. 渲染與邏輯
         function renderList(type) {
             const list = document.getElementById(type + 'List');
             if (!list) return;
@@ -212,8 +210,14 @@
         function refreshLyric() {
             if (!lyricsDB.length) return;
             currentLyric = lyricsDB[Math.floor(Math.random() * lyricsDB.length)];
+            
+            // 判斷是否為英文歌詞 (無中文字符)
+            const isEnglish = !/[\u4e00-\u9fa5]/.test(currentLyric.quote);
+            const openQ = isEnglish ? '“' : '「';
+            const closeQ = isEnglish ? '”' : '」';
+
             document.getElementById('lyric-content').innerHTML = `
-                <div class="font-serif-tc text-lg mb-3 italic">「${currentLyric.quote}」</div>
+                <div class="font-serif-tc text-lg mb-3 italic">${openQ}${currentLyric.quote}${closeQ}</div>
                 <div class="flex justify-between items-center">
                     <span class="text-[10px] uppercase tracking-widest" style="color: var(--text-muted)">// ${currentLyric.title}</span>
                     <button onclick="toggleVideo()" class="text-[10px] font-bold" style="color: var(--accent-green)">DISPLAY_FULL</button>
@@ -231,7 +235,6 @@
         }
 
         function togglePriority() { document.getElementById('priorityGroup').classList.toggle('hidden'); }
-        
         async function addTodo(level) {
             const text = document.getElementById('mainInput').value;
             if(!text) return;
@@ -239,32 +242,27 @@
             db.todo.sort((a,b) => a.level - b.level);
             await finalizeAction();
         }
-
         async function addItem(type) {
             const text = document.getElementById('mainInput').value;
             if(!text) return;
             db[type].push({ id: Date.now(), text, done: false });
             await finalizeAction();
         }
-
         async function toggleDone(type, id) {
             db[type] = db[type].map(i => i.id === id ? {...i, done: !i.done} : i);
             renderList(type);
             await syncCloud();
         }
-
         async function deleteItem(type, id) {
             db[type] = db[type].filter(i => i.id !== id);
             renderAll();
             await syncCloud();
         }
-
         async function clearCompleted(type) {
             db[type] = db[type].filter(i => !i.done);
             renderAll();
             await syncCloud();
         }
-
         async function finalizeAction() {
             document.getElementById('mainInput').value = '';
             document.getElementById('priorityGroup').classList.add('hidden');
@@ -272,7 +270,6 @@
             refreshLyric();
             await syncCloud();
         }
-
         function renderAll() { ['todo', 'idea', 'buy'].forEach(renderList); }
         function updateStatus(txt) { document.getElementById('status').innerText = txt; }
 
