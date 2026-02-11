@@ -33,9 +33,10 @@
         ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
 
         /* --- 貓咪樣式 --- */
+        /* --- 修正後的貓咪與對話框樣式 --- */
         #pixel-cat {
             position: absolute;
-            bottom: -50px; 
+            bottom: -20px; /* 已移上來，更靠近 Shopping 列表 */
             left: 50px;
             width: 30px;
             height: 20px;
@@ -102,15 +103,14 @@
             z-index: 110;
             pointer-events: none;
             white-space: nowrap;
-            /* 移除可能導致細線的陰影，改用較柔和的設定 */
             box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            border: none; /* 確保沒有邊框 */
+            border: none;
         }
 
         #cat-bubble::after {
             content: "";
             position: absolute;
-            bottom: -5px; /* 向上移動 1px 確保與主體重疊，消除細縫 */
+            bottom: -5px; /* 與主體重疊 1px 消除細線縫隙 */
             left: 15px;
             width: 0;
             height: 0;
