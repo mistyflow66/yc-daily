@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sodagreen Cyber-Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&display=swap');
+        
+        :root {
+            --bg: #0E0B14; --surface: #181225;
+            --primary: #7B3DFF; --secondary: #FF6A3D;
+            --accent-yellow: #FFC247; --accent-green: #2BCB7D;
+            --accent-pink: #E5A3C7; --accent-blue: #3D57FF;
+            --text: #F3F0FF; --text-muted: #B8AFCF;
+        }
+
+        body { background-color: var(--bg); color: var(--text); font-family: sans-serif; }
+        .font-serif-tc { font-family: 'Noto Serif TC', serif; }
+        .surface { background-color: var(--surface); border: 1px solid rgba(255,255,255,0.05); }
+        .done-text { text-decoration: line-through; color: var(--text-muted); opacity: 0.5; }
+        
+        /* 滾動條樣式 */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
+    </style>
+</head>
+<body class="p-4 pb-10">
+
+    <div class="max-w-md mx-auto space-y-6">
+        <header class="flex justify-between items-center py-2">
+            <h1 class="text-2xl font-black tracking-tighter" style="color: var(--primary)">DASHBOARD.exe</h1>
+            <div id="status" class="text-[10px] uppercase tracking-widest px-2 py-1 rounded bg-white/5 text-muted">Initializing...</div>
+        </header>
+
+        <section class="surface rounded-3xl p-6 shadow-2xl relative overflow-hidden min-h-[140px] flex flex-col justify-center">
+            <div id="lyric-content" class="relative z-10"></div>
+            <div id="video-container" class="hidden mt-4 overflow-hidden rounded-xl bg-black aspect-video relative z-10"></div>
+            <div class="absolute -top-10 -right-10 w-32 h-32 blur-[80px]" style="background: var(--primary); opacity: 0.2;"></div>
+        </section>
+
+        <div class="surface p-5 rounded-3xl shadow-xl">
+            <input id="mainInput" type="text" placeholder="Input command..." 
+                class="w-full bg-black/40 text-white placeholder-slate-600 p-4 rounded-2xl outline-none focus:ring-1 focus:ring-purple-500 mb-4">
+            
+            <div class="grid grid-cols-3 gap-2">
+                <button onclick="togglePriority()" class="py-3 rounded-xl text-xs font-bold transition-all active:scale-95" style="background: var(--primary)">＋ TASK</button>
+                <button onclick="addItem('idea')" class="py-3 rounded-xl text-xs font-bold opacity-80" style="background: var(--surface); border: 1px solid var(--primary)">IDEA</button>
+                <button onclick="addItem('buy')" class="py-3 rounded-xl text-xs font-bold opacity-80" style="background: var(--surface); border: 1px solid var(--primary)">BUY</button>
+            </div>
+
+            <div id="priorityGroup" class="hidden grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-white/5">
+                <button onclick="addTodo(1)" class="py-2 rounded-lg text-[10px] font-bold border border-red-500/50 text-red-400">CRITICAL</button>
+                <button onclick="addTodo(2)" class="py-2 rounded-lg text-[10px] font-bold border border-yellow-500/50 text-yellow-400">NORMAL</button>
+                <button onclick="addTodo(3)" class="py-2 rounded-lg text-[10px] font-bold border border-green-500/50 text-green-400">LOW</button>
+            </div>
+        </div>
+
+        <main class="space-y-8">
+            <section>
+                <div class="flex justify-between items-center mb-3 px-2">
+                    <h2 class="text-[10px] font-bold tracking-widest uppercase" style="color: var(--accent-blue)">📝 To-Do / Priority</h2>
+                    <button onclick="clearCompleted('todo')" class="text-[10px] opacity-50 hover:opacity-100">CLEAN DONE</button>
+                </div>
+                <ul id="todoList" class="space-y-2"></ul>
+            </section>
+
+            <section>
+                <h2 class="text-[10px] font-bold tracking-widest uppercase mb-3 px-2" style="color: var(--accent-pink)">💡 Brainstorm</h2>
+                <ul id="ideaList" class="space-y-2"></ul>
+            </section>
+
+            <section>
+                <h2 class="text-[10px] font-bold tracking-widest uppercase mb-3 px-2" style="color: var(--accent-yellow)">🛒 Shopping</h2>
+                <ul id="buyList" class="space-y-2"></ul>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const CONFIG = {
+            TOKEN: '你的_GITHUB_TOKEN',
+            GIST_ID: '你的_GIST_ID',
+            LYRICS_URL: '你的_GITHUB_PAGES_LYRICS_JSON_網址'
+        };
+
+        let db = { todo: [], idea: [], buy: [] };
+        let lyricsDB = [];
+        let currentLyric = null;
+
+        // 初始化
+        async function init() {
+            updateStatus('Loading Cloud...');
+            try {
+                // 1. 抓歌詞 (GitHub Pages)
+                const lyricRes = await fetch(CONFIG.LYRICS_URL);
+                lyricsDB = await lyricRes.json();
+                
+                // 2. 抓待辦 (GitHub Gist)
+                const gistRes = await fetch(`https://api.github.com/gists/${CONFIG.GIST_ID}`, {
+                    headers: { Authorization: `token ${CONFIG.TOKEN}` }
+                });
+                const gistData = await gistRes.json();
+                db = JSON.parse(gistData.files['dashboard.json'].content);
+                
+                renderAll();
+                refreshLyric();
+                updateStatus('System Online');
+            } catch (e) {
+                updateStatus('Sync Error');
+                console.error(e);
+            }
+        }
+
+        // 雲端同步
+        async function syncCloud() {
+            updateStatus('Syncing...');
+            await fetch(`https://api.github.com/gists/${CONFIG.GIST_ID}`, {
+                method: 'PATCH',
+                headers: { Authorization: `token ${CONFIG.TOKEN}` },
+                body: JSON.stringify({
+                    files: { 'dashboard.json': { content: JSON.stringify(db) } }
+                })
+            });
+            updateStatus('System Online');
+        }
+
+        // 渲染邏輯
+        function renderList(type) {
+            const list = document.getElementById(type + 'List');
+            const items = db[type] || [];
+            const colors = { 1: 'var(--secondary)', 2: 'var(--accent-yellow)', 3: 'var(--accent-green)' };
+            
+            list.innerHTML = items.map(item => `
+                <li class="surface p-4 rounded-2xl flex justify-between items-center group animate-in fade-in duration-500">
+                    <div class="flex items-center gap-3 flex-1 cursor-pointer" onclick="toggleDone('${type}', ${item.id})">
+                        <div class="w-2 h-2 rounded-full" style="background: ${type==='todo' ? colors[item.level] : 'var(--primary)'}; box-shadow: 0 0 10px ${type==='todo' ? colors[item.level] : 'var(--primary)'}66"></div>
+                        <span class="text-sm ${item.done ? 'done-text' : ''}">${item.text}</span>
+                    </div>
+                    <button onclick="deleteItem('${type}', ${item.id})" class="opacity-0 group-hover:opacity-100 text-xs text-slate-500">✕</button>
+                </li>
+            `).join('');
+        }
+
+        // 蘇打綠模組
+        function refreshLyric() {
+            currentLyric = lyricsDB[Math.floor(Math.random() * lyricsDB.length)];
+            document.getElementById('lyric-content').innerHTML = `
+                <div class="font-serif-tc text-lg mb-3 italic" style="color: var(--text)">「${currentLyric.quote}」</div>
+                <div class="flex justify-between items-center">
+                    <span class="text-[10px] uppercase tracking-widest" style="color: var(--text-muted)">// ${currentLyric.title}</span>
+                    <button onclick="toggleVideo()" class="text-[10px] font-bold hover:underline" style="color: var(--accent-green)">DISPLAY_FULL</button>
+                </div>
+            `;
+            document.getElementById('video-container').classList.add('hidden');
+        }
+
+        function toggleVideo() {
+            const v = document.getElementById('video-container');
+            if (v.classList.contains('hidden')) {
+                v.innerHTML = `<iframe width="100%" height="100%" src="https://www.youtube.com/embed/${currentLyric.ytId}?autoplay=1" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+                v.classList.remove('hidden');
+            } else { v.classList.add('hidden'); v.innerHTML = ''; }
+        }
+
+        // 基礎功能
+        function togglePriority() { document.getElementById('priorityGroup').classList.toggle('hidden'); }
+        async function addTodo(level) {
+            const text = document.getElementById('mainInput').value;
+            db.todo.push({ id: Date.now(), text, level, done: false });
+            db.todo.sort((a,b) => a.level - b.level);
+            await finalizeAction();
+        }
+        async function addItem(type) {
+            const text = document.getElementById('mainInput').value;
+            db[type].push({ id: Date.now(), text, done: false });
+            await finalizeAction();
+        }
+        async function toggleDone(type, id) {
+            db[type] = db[type].map(i => i.id === id ? {...i, done: !i.done} : i);
+            renderList(type);
+            await syncCloud();
+        }
+        async function finalizeAction() {
+            document.getElementById('mainInput').value = '';
+            document.getElementById('priorityGroup').classList.add('hidden');
+            renderAll();
+            refreshLyric();
+            await syncCloud();
+        }
+        function renderAll() { ['todo', 'idea', 'buy'].forEach(renderList); }
+        function updateStatus(txt) { document.getElementById('status').innerText = txt; }
+
+        init();
+    </script>
+</body>
+</html>
