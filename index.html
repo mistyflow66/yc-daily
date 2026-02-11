@@ -23,17 +23,65 @@
             color: var(--text); 
             font-family: sans-serif;
             position: relative;
+            overflow-x: hidden;
         }
-        /* Grainy Effect Overlay */
+        /* 動態噪點效果 Grainy Effect */
         body::before {
             content: "";
             position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
+            top: -100%; left: -100%; width: 300%; height: 300%;
             pointer-events: none;
             z-index: 50;
-            opacity: 0.04;
+            opacity: 0.06;
             background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            animation: grain 8s steps(10) infinite;
         }
+        @keyframes grain {
+            0%, 100% { transform: translate(0, 0); }
+            10% { transform: translate(-5%, -10%); }
+            30% { transform: translate(-10%, 5%); }
+            50% { transform: translate(5%, -5%); }
+            70% { transform: translate(10%, 10%); }
+            90% { transform: translate(-5%, 5%); }
+        }
+
+        /* Pixel 貓咪樣式 */
+        #pixel-cat {
+            position: fixed;
+            bottom: 10px;
+            left: -50px;
+            width: 32px;
+            height: 32px;
+            image-rendering: pixelated;
+            cursor: pointer;
+            z-index: 100;
+            transition: bottom 0.2s;
+            background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgBAMAAACshzhSAAAAD1BMVEUAAAD///8AAAD///8AAAD///+769SDAAAABHRSTlMAESIzVp64mAAAADtJREFUKM9jGAW0AsyYAnYwY6YpYAcLptYpYAcLptYpYAcLptYpYAcLptYpYAcLptYpYAcLptYpYAcLpgoA0mIOf98yXpAAAAAASUVORK5CYII=') no-repeat center;
+            background-size: contain;
+        }
+        #cat-bubble {
+            position: fixed;
+            bottom: 45px;
+            background: white;
+            color: black;
+            padding: 4px 8px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: bold;
+            display: none;
+            z-index: 101;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+        #cat-bubble::after {
+            content: "";
+            position: absolute;
+            bottom: -5px; left: 10px;
+            border-width: 5px 5px 0;
+            border-style: solid;
+            border-color: white transparent transparent;
+        }
+
         .font-serif-tc { font-family: 'Noto Serif TC', serif; }
         .surface { background-color: var(--surface); border: 1px solid rgba(255,255,255,0.05); }
         .done-text { text-decoration: line-through; color: var(--text-muted); opacity: 0.5; }
@@ -92,6 +140,9 @@
         </main>
     </div>
 
+    <div id="pixel-cat" onclick="meow()"></div>
+    <div id="cat-bubble">MEOW!</div>
+
     <script>
         const CONFIG = {
             LYRICS_URL: 'https://raw.githubusercontent.com/mistyflow66/yc-daily/refs/heads/main/lyrics.json'
@@ -100,6 +151,11 @@
         let db = { todo: [], idea: [], buy: [] };
         let lyricsDB = [];
         let currentLyric = null;
+
+        // 貓咪邏輯變數
+        let catX = -50;
+        let catTargetX = 0;
+        let isWalking = true;
 
         function getToken() {
             let token = localStorage.getItem('GIST_TOKEN');
@@ -131,7 +187,7 @@
             updateStatus('Initializing...');
             const token = getToken();
             const gistId = getGistId();
-            
+
             if (!token || !gistId) {
                 updateStatus('Setup Required');
                 return;
@@ -157,20 +213,58 @@
                 const gistRes = await fetch(`https://api.github.com/gists/${gistId}`, {
                     headers: { Authorization: `token ${token}` }
                 });
-                
+
                 if (gistRes.status === 401) { alert("Token 無效。"); return; }
                 else if (gistRes.status === 404) { alert("找不到 Gist ID。"); return; }
 
                 const gistData = await gistRes.json();
                 db = JSON.parse(gistData.files['dashboard.json'].content);
-                
+
                 renderAll();
                 refreshLyric();
                 updateStatus('System Online');
+                
+                // 啟動貓咪
+                catTargetX = Math.random() * (window.innerWidth - 40);
+                moveCat();
             } catch (e) {
                 updateStatus('Sync Error');
                 console.error(e);
             }
+        }
+
+        // 貓咪移動邏輯
+        function moveCat() {
+            const cat = document.getElementById('pixel-cat');
+            const bubble = document.getElementById('cat-bubble');
+            const screenWidth = window.innerWidth;
+
+            if (isWalking) {
+                if (Math.abs(catX - catTargetX) < 2) {
+                    isWalking = false;
+                    setTimeout(() => {
+                        catTargetX = Math.random() * (screenWidth - 40);
+                        isWalking = true;
+                        cat.style.transform = catTargetX > catX ? 'scaleX(-1)' : 'scaleX(1)';
+                    }, Math.random() * 5000 + 2000);
+                } else {
+                    catX += (catTargetX > catX ? 1 : -1) * 0.5;
+                    cat.style.left = catX + 'px';
+                    bubble.style.left = (catX + 5) + 'px';
+                }
+            }
+            requestAnimationFrame(moveCat);
+        }
+
+        function meow() {
+            const bubble = document.getElementById('cat-bubble');
+            const messages = ["MEOW!", "喵的咧～", "oh oh oh oh...", "我只要只屬於我的宇宙♪", "想睡覺...", "罐頭？"];
+            bubble.innerText = messages[Math.floor(Math.random() * messages.length)];
+            bubble.style.display = 'block';
+            setTimeout(() => bubble.style.display = 'none', 2000);
+            const cat = document.getElementById('pixel-cat');
+            cat.style.bottom = '25px';
+            setTimeout(() => cat.style.bottom = '10px', 200);
         }
 
         async function syncCloud() {
@@ -195,7 +289,7 @@
             if (!list) return;
             const items = db[type] || [];
             const colors = { 1: 'var(--secondary)', 2: 'var(--accent-yellow)', 3: 'var(--accent-green)' };
-            
+
             list.innerHTML = items.map(item => `
                 <li class="surface p-4 rounded-2xl flex justify-between items-center group animate-in fade-in duration-500">
                     <div class="flex items-center gap-3 flex-1 cursor-pointer" onclick="toggleDone('${type}', ${item.id})">
@@ -210,12 +304,9 @@
         function refreshLyric() {
             if (!lyricsDB.length) return;
             currentLyric = lyricsDB[Math.floor(Math.random() * lyricsDB.length)];
-            
-            // 判斷是否為英文歌詞 (無中文字符)
             const isEnglish = !/[\u4e00-\u9fa5]/.test(currentLyric.quote);
             const openQ = isEnglish ? '“' : '「';
             const closeQ = isEnglish ? '”' : '」';
-
             document.getElementById('lyric-content').innerHTML = `
                 <div class="font-serif-tc text-lg mb-3 italic">${openQ}${currentLyric.quote}${closeQ}</div>
                 <div class="flex justify-between items-center">
@@ -258,7 +349,7 @@
             renderAll();
             await syncCloud();
         }
-                // 修改為全域清空：點擊一次，清除三個欄位中所有已劃掉的項目
+
         async function clearCompleted() {
             const types = ['todo', 'idea', 'buy'];
             types.forEach(type => {
@@ -287,3 +378,4 @@
     </script>
 </body>
 </html>
+
