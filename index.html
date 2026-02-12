@@ -25,18 +25,16 @@
             position: relative;
             overflow-x: hidden;
         }
-
         .font-serif-tc { font-family: 'Noto Serif TC', serif; }
         .surface { background-color: var(--surface); border: 1px solid rgba(255,255,255,0.05); }
         .done-text { text-decoration: line-through; color: var(--text-muted); opacity: 0.5; }
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
 
-        /* --- 貓咪樣式 --- */
-        /* --- 修正後的貓咪與對話框樣式 --- */
+        /* ================= 最終版貓咪樣式 ================= */
         #pixel-cat {
             position: absolute;
-            bottom: -20px; /* 已移上來，更靠近 Shopping 列表 */
+            bottom: -20px; /* 移至底部適當位置 */
             left: 50px;
             width: 30px;
             height: 20px;
@@ -44,7 +42,7 @@
             border-radius: 10px 10px 5px 5px;
             cursor: pointer;
             z-index: 100;
-            transition: transform 0.2s linear;
+            transition: transform 0.2s linear, height 0.2s;
             animation: catBounce 0.6s infinite alternate;
             user-select: none;
             -webkit-user-drag: none;
@@ -52,74 +50,48 @@
             touch-action: manipulation;
         }
 
+        .cat-sit { height: 16px; border-radius: 10px 10px 8px 8px; }
+
         #pixel-cat::before, #pixel-cat::after {
-            content: "";
-            position: absolute;
-            top: -8px;
-            width: 0;
-            height: 0;
-            border-left: 6px solid transparent;
-            border-right: 6px solid transparent;
+            content: ""; position: absolute; top: -8px;
+            border-left: 6px solid transparent; border-right: 6px solid transparent;
             border-bottom: 10px solid #FFFFFF;
         }
         #pixel-cat::before { left: 2px; transform: rotate(-10deg); }
         #pixel-cat::after { right: 2px; transform: rotate(10deg); }
 
         #cat-eyes {
-            position: absolute;
-            top: 6px; left: 5px; width: 20px;
+            position: absolute; top: 6px; left: 5px; width: 20px;
             display: flex; justify-content: space-around;
-            pointer-events: none;
             transition: transform 0.1s;
         }
         .eye { width: 4px; height: 4px; background: #181225; border-radius: 50%; }
 
         #cat-tail {
-            position: absolute;
-            right: -8px; bottom: 5px;
-            width: 12px; height: 6px;
-            background: #FFFFFF;
-            border-radius: 0 5px 5px 0;
-            transform-origin: left;
-            animation: tailWag 0.4s infinite alternate;
+            position: absolute; bottom: 4px; width: 12px; height: 6px;
+            background: #FFFFFF; border-radius: 5px; transition: all 0.3s; z-index: -1;
         }
+
+        .tail-left { left: -8px; transform-origin: right; border-radius: 5px 0 0 5px; animation: tailWagLeft 0.4s infinite alternate; }
+        .tail-right { right: -8px; transform-origin: left; border-radius: 0 5px 5px 0; animation: tailWagRight 0.4s infinite alternate; }
+        .tail-rest-left { left: 4px; animation: none; transform: rotate(0deg); }
+        .tail-rest-right { right: 4px; animation: none; transform: rotate(0deg); }
 
         @keyframes catBounce { from { transform: translateY(0); } to { transform: translateY(-3px); } }
-        @keyframes tailWag { from { transform: rotate(0deg); } to { transform: rotate(30deg); } }
+        @keyframes tailWagLeft { from { transform: rotate(0deg); } to { transform: rotate(-30deg); } }
+        @keyframes tailWagRight { from { transform: rotate(0deg); } to { transform: rotate(30deg); } }
 
-        /* --- 修正後的對話框樣式，移除細黑線 --- */
         #cat-bubble {
-            position: absolute;
-            bottom: 35px; 
-            left: 50%;
-            transform: translateX(-20%);
-            background: white;
-            color: black;
-            padding: 5px 12px;
-            border-radius: 10px;
-            font-size: 11px;
-            font-weight: bold;
-            display: none;
-            z-index: 110;
-            pointer-events: none;
-            white-space: nowrap;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            border: none;
+            position: absolute; bottom: 35px; left: 50%; transform: translateX(-20%);
+            background: white; color: black; padding: 5px 12px; border-radius: 10px;
+            font-size: 11px; font-weight: bold; display: none; z-index: 110;
+            white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.3); border: none;
         }
-
         #cat-bubble::after {
-            content: "";
-            position: absolute;
-            bottom: -5px; /* 與主體重疊 1px 消除細線縫隙 */
-            left: 15px;
-            width: 0;
-            height: 0;
-            border-style: solid;
-            border-width: 6px 6px 0 0;
+            content: ""; position: absolute; bottom: -5px; left: 15px;
+            border-style: solid; border-width: 6px 6px 0 0;
             border-color: white transparent transparent transparent;
-            display: block;
         }
-
 
         main { position: relative; padding-bottom: 100px; }
     </style>
@@ -174,10 +146,7 @@
             </section>
 
             <div id="pixel-cat" onclick="meow()">
-                <div id="cat-eyes">
-                    <div class="eye"></div>
-                    <div class="eye"></div>
-                </div>
+                <div id="cat-eyes"><div class="eye"></div><div class="eye"></div></div>
                 <div id="cat-tail"></div>
                 <div id="cat-bubble">MEOW!</div>
             </div>
@@ -187,9 +156,12 @@
     <script>
         const CONFIG = { LYRICS_URL: 'https://raw.githubusercontent.com/mistyflow66/yc-daily/refs/heads/main/lyrics.json' };
         let db = { todo: [], idea: [], buy: [] };
-        let lyricsDB = [];
-        let currentLyric = null;
-        let catX = 50, catTargetX = 50, isWalking = true, meowTimer = null;
+        let lyricsDB = [], currentLyric = null;
+        
+        // 貓咪狀態變數
+        let catX = 50, catTargetX = 50;
+        let isWalking = true, isPaused = false;
+        let tailSide = 'right', bubbleTimer = null;
 
         function getToken() {
             let t = localStorage.getItem('GIST_TOKEN');
@@ -206,22 +178,37 @@
         async function init() {
             updateStatus('Initializing...');
             const token = getToken(); const gistId = getGistId();
-            if (!token || !gistId) { updateStatus('Setup Required'); setTimeout(startCatAnimation, 500); return; }
-
+            if (!token || !gistId) { updateStatus('Setup Required'); startCat(); return; }
             try {
                 const lRes = await fetch(CONFIG.LYRICS_URL); lyricsDB = await lRes.json();
                 const gRes = await fetch(`https://api.github.com/gists/${gistId}`, { headers: { Authorization: `token ${token}` } });
                 const gData = await gRes.json(); db = JSON.parse(gData.files['dashboard.json'].content);
                 renderAll(); refreshLyric(); updateStatus('System Online');
             } catch (e) { updateStatus('Sync Error'); }
-            setTimeout(startCatAnimation, 500);
+            startCat();
         }
 
-        function startCatAnimation() {
+        // --- 貓咪動畫邏輯整合 ---
+        function startCat() {
             const main = document.querySelector('main');
-            if (!main || main.offsetWidth === 0) { setTimeout(startCatAnimation, 100); return; }
             catTargetX = (main.offsetWidth - 40) * Math.random();
             moveCat();
+        }
+
+        function showTail(direction) {
+            const tail = document.getElementById('cat-tail');
+            tail.className = '';
+            if(direction === 'left') {
+                tail.classList.add('tail-right'); tailSide = 'right';
+            } else {
+                tail.classList.add('tail-left'); tailSide = 'left';
+            }
+        }
+
+        function restTail() {
+            const tail = document.getElementById('cat-tail');
+            tail.className = '';
+            tail.classList.add(tailSide === 'left' ? 'tail-rest-left' : 'tail-rest-right');
         }
 
         function moveCat() {
@@ -230,16 +217,23 @@
             if(!cat || !main) return;
             const mainWidth = main.offsetWidth - 40;
 
-            if (isWalking) {
+            if (isWalking && !isPaused) {
+                cat.classList.remove('cat-sit');
+                const movingRight = catTargetX > catX;
+                const direction = movingRight ? 'right' : 'left';
+                cat.style.transform = movingRight ? 'scaleX(-1)' : 'scaleX(1)';
+                showTail(direction);
+
                 if (Math.abs(catX - catTargetX) < 2) {
-                    isWalking = false;
+                    isWalking = false; isPaused = true;
+                    cat.classList.add('cat-sit');
+                    setTimeout(() => { restTail(); }, 1000);
                     setTimeout(() => {
                         catTargetX = Math.random() * mainWidth;
-                        isWalking = true;
-                        cat.style.transform = catTargetX > catX ? 'scaleX(-1)' : 'scaleX(1)';
-                    }, Math.random() * 4000 + 2000);
+                        isPaused = false; isWalking = true;
+                    }, 3000);
                 } else {
-                    catX += (catTargetX > catX ? 0.7 : -0.7);
+                    catX += movingRight ? 0.7 : -0.7;
                     catX = Math.max(0, Math.min(mainWidth, catX));
                     cat.style.left = catX + 'px';
                 }
@@ -249,17 +243,17 @@
 
         function meow() {
             const bubble = document.getElementById('cat-bubble');
-            const msgs = ["MEOW!", "喵的咧～", "想要罐罐...", "我巡邏中", "工作加油！", "不要摸我～"];
+            const eyes = document.getElementById('cat-eyes');
+            const msgs = ["MEOW!", "喵～", "想睡覺...", "摸我？", "努力工作！", "我守護清單"];
             bubble.innerText = msgs[Math.floor(Math.random() * msgs.length)];
             bubble.style.display = 'block';
-            if(meowTimer) clearTimeout(meowTimer);
-            meowTimer = setTimeout(() => bubble.style.display = 'none', 4000);
-            
-            const eyes = document.getElementById('cat-eyes');
+            if(bubbleTimer) clearTimeout(bubbleTimer);
+            bubbleTimer = setTimeout(() => bubble.style.display = 'none', 3000);
             eyes.style.transform = 'scaleY(0.1)';
             setTimeout(() => eyes.style.transform = 'scaleY(1)', 150);
         }
 
+        // --- 原始系統功能 ---
         async function syncCloud() {
             const t = getToken(); const i = getGistId(); if (!t || !i) return;
             try { await fetch(`https://api.github.com/gists/${i}`, {
@@ -267,7 +261,6 @@
                 body: JSON.stringify({ files: { 'dashboard.json': { content: JSON.stringify(db) } } })
             }); } catch (e) {}
         }
-
         function renderList(type) {
             const list = document.getElementById(type + 'List'); if (!list) return;
             const colors = { 1: 'var(--secondary)', 2: 'var(--accent-yellow)', 3: 'var(--accent-green)' };
@@ -281,14 +274,12 @@
                 </li>
             `).join('');
         }
-
         function refreshLyric() {
             if (!lyricsDB.length) return;
             currentLyric = lyricsDB[Math.floor(Math.random() * lyricsDB.length)];
             const isEn = !/[一-龥]/.test(currentLyric.quote);
             document.getElementById('lyric-content').innerHTML = `<div class="font-serif-tc text-lg mb-3 italic">${isEn ? '“' : '「'}${currentLyric.quote}${isEn ? '”' : '」'}</div><div class="flex justify-between items-center"><span class="text-[10px] uppercase tracking-widest text-muted">// ${currentLyric.title}</span><button onclick="toggleVideo()" class="text-[10px] font-bold text-accent-green">DISPLAY_FULL</button></div>`;
         }
-
         function toggleVideo() {
             const v = document.getElementById('video-container');
             if (v.classList.contains('hidden')) {
@@ -296,7 +287,6 @@
                 v.classList.remove('hidden');
             } else { v.classList.add('hidden'); v.innerHTML = ''; }
         }
-
         function togglePriority() { document.getElementById('priorityGroup').classList.toggle('hidden'); }
         async function addTodo(l) { const t = document.getElementById('mainInput').value; if(!t) return; db.todo.push({ id: Date.now(), text: t, level: l, done: false }); db.todo.sort((a,b) => a.level - b.level); await finalizeAction(); }
         async function addItem(type) { const t = document.getElementById('mainInput').value; if(!t) return; db[type].push({ id: Date.now(), text: t, done: false }); await finalizeAction(); }
@@ -311,4 +301,3 @@
     </script>
 </body>
 </html>
-
