@@ -93,14 +93,131 @@
             border-color: white transparent transparent transparent;
         }
 
+        #dashboard-content.blurred { filter: blur(15px); opacity: 0.2; pointer-events: none; }
+
+        #zen-ui {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 90;
+            text-align: center;
+            background: rgba(14, 11, 20, 0.8);
+            backdrop-filter: blur(4px);
+        }
+        #zen-inner {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-top: -10vh;
+            padding: 16px;
+        }
+        #zen-timer-display {
+            font-size: 7rem;
+            font-weight: 900;
+            color: var(--secondary);
+            line-height: 1;
+            margin: 0;
+            text-shadow: 0 0 30px rgba(255, 106, 61, 0.4);
+        }
+        #motivation-text {
+            font-size: 1.4rem;
+            margin-top: 15px;
+            opacity: 0.9;
+            height: 1.5em;
+            transition: opacity 0.5s;
+        }
+        #exit-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.4);
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+        #exit-btn:hover { background: rgba(255, 106, 61, 0.2); color: var(--secondary); }
+        #cat-container {
+            position: relative;
+            width: 100%;
+            max-width: 420px;
+            height: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+        }
+        .pixel-cat {
+            position: absolute;
+            width: 30px;
+            height: 20px;
+            background: #FFFFFF;
+            border-radius: 10px 10px 5px 5px;
+            cursor: pointer;
+            transform-origin: bottom center;
+            transition: left 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.5s;
+            animation: catBreathingReal 2.5s infinite ease-in-out;
+        }
+        .pixel-cat::before, .pixel-cat::after {
+            content: "";
+            position: absolute;
+            top: -8px;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 10px solid #FFFFFF;
+        }
+        .pixel-cat::before { left: 2px; transform: rotate(-10deg); transform-origin: bottom right; animation: earTwitchLeft 4s infinite; }
+        .pixel-cat::after { right: 2px; transform: rotate(10deg); transform-origin: bottom left; animation: earTwitchRight 4s infinite; }
+        .cat-eyes {
+            position: absolute;
+            top: 6px;
+            left: 5px;
+            width: 20px;
+            display: flex;
+            justify-content: space-around;
+        }
+        .cat-tail {
+            position: absolute;
+            bottom: 4px;
+            right: -8px;
+            width: 12px;
+            height: 6px;
+            background: #FFFFFF;
+            border-radius: 0 5px 5px 0;
+            transform-origin: left;
+            animation: tailWag 1.5s infinite ease-in-out;
+        }
+        @keyframes catBreathingReal { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.02, 0.98); } }
+        @keyframes earTwitchLeft { 0%, 85%, 90%, 95%, 100% { transform: rotate(-10deg); } 87%, 92% { transform: rotate(-25deg); } }
+        @keyframes earTwitchRight { 0%, 85%, 90%, 95%, 100% { transform: rotate(10deg); } 87%, 92% { transform: rotate(25deg); } }
+        @keyframes tailWag { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(20deg); } }
+        .backflip-active { animation: catBackflip 0.8s cubic-bezier(0.45, 0.05, 0.55, 0.95) forwards !important; z-index: 200; }
+        @keyframes catBackflip {
+            0% { transform: rotate(0deg); height: 20px; }
+            15% { transform: translateY(10px) rotate(0deg); height: 14px; }
+            35% { transform: translateY(-60px) rotate(-120deg); height: 24px; }
+            60% { transform: translateY(-80px) rotate(-240deg); height: 20px; }
+            85% { transform: translateY(5px) rotate(-360deg); height: 12px; }
+            100% { transform: translateY(0) rotate(-360deg); height: 20px; }
+        }
+        .backflip-active .cat-tail { animation: tailHide 0.8s forwards; }
+        @keyframes tailHide { 0%, 100% { transform: scale(1); } 15%, 85% { transform: scale(0); } }
+        .backflip-active .eye { animation: eyesSquint 0.8s forwards; }
+        @keyframes eyesSquint { 0%, 100% { transform: scaleY(1); } 15%, 85% { transform: scaleY(0.2); } }
+
         main { position: relative; padding-bottom: 100px; }
     </style>
 </head>
 <body class="p-4 pb-10">
 
-    <div class="max-w-md mx-auto space-y-6">
+    <div id="dashboard-content" class="max-w-md mx-auto space-y-6">
         <header class="flex justify-between items-center py-2">
-            <h1 class="text-2xl font-black tracking-tighter" style="color: var(--primary)">DASHBOARD.exe</h1>
+            <h1 id="dashboard-title" class="text-2xl font-black tracking-tighter cursor-pointer select-none" style="color: var(--primary)">DASHBOARD.exe</h1>
             <div class="flex gap-2">
                 <button onclick="resetToken()" class="text-[9px] opacity-30 hover:opacity-100 border border-white/20 px-2 py-0.5 rounded">RESET KEY</button>
                 <div id="status" class="text-[10px] uppercase tracking-widest px-2 py-1 rounded bg-white/5 text-muted">Initializing...</div>
@@ -153,6 +270,15 @@
         </main>
     </div>
 
+    <div id="zen-ui">
+        <div id="zen-inner">
+            <div id="zen-timer-display">15:00</div>
+            <div id="motivation-text">喝一口水，靜下心來。</div>
+            <div id="cat-container"></div>
+        </div>
+        <button id="exit-btn" onclick="handleExit()">✕ 離開冷靜區</button>
+    </div>
+
     <script>
         const CONFIG = { LYRICS_URL: 'https://raw.githubusercontent.com/mistyflow66/yc-daily/refs/heads/main/lyrics.json' };
         let db = { todo: [], idea: [], buy: [] };
@@ -162,6 +288,14 @@
         let catX = 50, catTargetX = 50;
         let isWalking = true, isPaused = false;
         let tailSide = 'right', bubbleTimer = null;
+
+        let isZenMode = false;
+        let zenCountdown, quoteInterval;
+        let globalClickCount = 0;
+        let titleClickCount = 0;
+        let titleClickTimer = null;
+        const quotes = ["喝一口水，靜下心來。", "深呼吸，感受當下的平靜。", "你比零食更強大。", "這隻貓正在為你的自律感到驕傲。", "專注於現在的每一秒。"];
+        const OFFSET_MAP = [0, -50, 50, -100, 100];
 
         function getToken() {
             let t = localStorage.getItem('GIST_TOKEN');
@@ -253,6 +387,137 @@
             setTimeout(() => eyes.style.transform = 'scaleY(1)', 150);
         }
 
+        function setupZenTrigger() {
+            const title = document.getElementById('dashboard-title');
+            if (!title) return;
+            title.addEventListener('click', handleTitleSecretTrigger);
+        }
+
+        function handleTitleSecretTrigger() {
+            if (isZenMode) return;
+            titleClickCount++;
+            if (titleClickTimer) clearTimeout(titleClickTimer);
+            titleClickTimer = setTimeout(() => { titleClickCount = 0; }, 1800);
+            if (titleClickCount >= 5) {
+                titleClickCount = 0;
+                toggleZenMode();
+            }
+        }
+
+        function toggleZenMode() {
+            isZenMode = !isZenMode;
+            const dashboard = document.getElementById('dashboard-content');
+            const zenUi = document.getElementById('zen-ui');
+            const container = document.getElementById('cat-container');
+            const display = document.getElementById('zen-timer-display');
+            const text = document.getElementById('motivation-text');
+
+            if (isZenMode) {
+                dashboard.classList.add('blurred');
+                zenUi.style.display = 'block';
+                container.innerHTML = '';
+                globalClickCount = 0;
+                display.textContent = '15:00';
+                text.textContent = quotes[0];
+                addCat();
+                startZenTimer();
+                startQuotes();
+            } else {
+                dashboard.classList.remove('blurred');
+                zenUi.style.display = 'none';
+                clearInterval(zenCountdown);
+                clearInterval(quoteInterval);
+            }
+        }
+
+        function handleExit() {
+            const reallyExit = confirm("確定要離開嗎？現在離開的話，這幾隻貓會很寂寞喔...\n\n再堅持一下下好嗎？");
+            if (reallyExit) {
+                toggleZenMode();
+            }
+        }
+
+        function addCat() {
+            const container = document.getElementById('cat-container');
+            const currentCount = container.querySelectorAll('.pixel-cat').length;
+            if (currentCount >= 5) return;
+
+            const cat = document.createElement('div');
+            cat.className = 'pixel-cat';
+            cat.innerHTML = `
+                <div class="cat-eyes"><div class="eye"></div><div class="eye"></div></div>
+                <div class="cat-tail"></div>
+            `;
+            cat.style.left = '50%';
+            cat.style.top = '-200px';
+            cat.style.opacity = '0';
+            cat.style.marginLeft = '-15px';
+            cat.onclick = triggerMassBackflip;
+            container.appendChild(cat);
+
+            setTimeout(() => {
+                cat.style.opacity = '1';
+                cat.style.top = '0px';
+                updateCatPositions();
+            }, 50);
+        }
+
+        function updateCatPositions() {
+            const cats = document.querySelectorAll('.pixel-cat');
+            cats.forEach((cat, i) => {
+                cat.style.left = `calc(50% + ${OFFSET_MAP[i]}px)`;
+            });
+        }
+
+        function triggerMassBackflip() {
+            const cats = Array.from(document.querySelectorAll('.pixel-cat'));
+            if (!cats.length) return;
+            const numToFlip = Math.floor(Math.random() * cats.length) + 1;
+            const shuffled = cats.sort(() => 0.5 - Math.random());
+            const selected = shuffled.slice(0, numToFlip);
+
+            selected.forEach((cat, index) => {
+                if (cat.classList.contains('backflip-active')) return;
+
+                setTimeout(() => {
+                    cat.classList.add('backflip-active');
+                    globalClickCount++;
+                    if (globalClickCount > 0 && globalClickCount % 3 === 0) {
+                        addCat();
+                    }
+                    cat.addEventListener('animationend', () => {
+                        cat.classList.remove('backflip-active');
+                    }, { once: true });
+                }, index * 80);
+            });
+        }
+
+        function startZenTimer() {
+            clearInterval(zenCountdown);
+            let seconds = 15 * 60;
+            const display = document.getElementById('zen-timer-display');
+            zenCountdown = setInterval(() => {
+                const mins = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                display.textContent = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+                if (seconds-- <= 0) clearInterval(zenCountdown);
+            }, 1000);
+        }
+
+        function startQuotes() {
+            clearInterval(quoteInterval);
+            const text = document.getElementById('motivation-text');
+            let i = 1;
+            quoteInterval = setInterval(() => {
+                text.style.opacity = 0;
+                setTimeout(() => {
+                    text.textContent = quotes[i];
+                    text.style.opacity = 0.9;
+                    i = (i + 1) % quotes.length;
+                }, 500);
+            }, 10000);
+        }
+
         // --- 原始系統功能 ---
         async function syncCloud() {
             const t = getToken(); const i = getGistId(); if (!t || !i) return;
@@ -297,6 +562,7 @@
         function renderAll() { ['todo', 'idea', 'buy'].forEach(renderList); }
         function updateStatus(txt) { document.getElementById('status').innerText = txt; }
 
+        setupZenTrigger();
         init();
     </script>
 </body>
