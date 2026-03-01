@@ -280,7 +280,7 @@
     </div>
 
     <script>
-        const CONFIG = { LYRICS_URL: 'lyrics.json' };
+        const CONFIG = { LYRICS_URL: 'https://raw.githubusercontent.com/mistyflow66/yc-daily/refs/heads/main/lyrics.json' };
         let db = { todo: [], idea: [], buy: [] };
         let lyricsDB = [], currentLyric = null;
         let lyricHistory = [];
@@ -318,7 +318,6 @@
             if (!token || !gistId) { updateStatus('Setup Required'); startCat(); return; }
             try {
                 const lRes = await fetch(CONFIG.LYRICS_URL); lyricsDB = await lRes.json();
-                lyricHistory = [];
                 const gRes = await fetch(`https://api.github.com/gists/${gistId}`, { headers: { Authorization: `token ${token}` } });
                 const gData = await gRes.json(); db = JSON.parse(gData.files['dashboard.json'].content);
                 renderAll(); refreshLyric(); updateStatus('System Online');
