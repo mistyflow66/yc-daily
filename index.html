@@ -317,11 +317,24 @@
             const token = getToken(); const gistId = getGistId();
             if (!token || !gistId) { updateStatus('Setup Required'); startCat(); return; }
             try {
-                const lRes = await fetch(CONFIG.LYRICS_URL); lyricsDB = await lRes.json();
+                let lRes = await fetch(CONFIG.LYRICS_URL);
+                if (!lRes.ok) {
+                    lRes = await fetch('lyrics.json');
+                }
+                if (!lRes.ok) throw new Error(`LYRICS_${lRes.status}`);
+                lyricsDB = await lRes.json();
+
                 const gRes = await fetch(`https://api.github.com/gists/${gistId}`, { headers: { Authorization: `token ${token}` } });
-                const gData = await gRes.json(); db = JSON.parse(gData.files['dashboard.json'].content);
+                if (!gRes.ok) throw new Error(`GIST_${gRes.status}`);
+                const gData = await gRes.json();
+                if (!gData.files || !gData.files['dashboard.json']) throw new Error('MISSING_DASHBOARD_JSON');
+                db = JSON.parse(gData.files['dashboard.json'].content);
                 renderAll(); refreshLyric(); updateStatus('System Online');
-            } catch (e) { updateStatus('Sync Error'); }
+            } catch (e) {
+                const message = e && e.message ? e.message : 'UNKNOWN';
+                updateStatus(`Sync Error: ${message}`);
+                console.error('Init sync failed:', e);
+            }
             startCat();
         }
 
@@ -527,7 +540,7 @@
             try { await fetch(`https://api.github.com/gists/${i}`, {
                 method: 'PATCH', headers: { Authorization: `token ${t}` },
                 body: JSON.stringify({ files: { 'dashboard.json': { content: JSON.stringify(db) } } })
-            }); } catch (e) {}
+            }); } catch (e) { console.error('Cloud sync failed:', e); }
         }
         function renderList(type) {
             const list = document.getElementById(type + 'List'); if (!list) return;
