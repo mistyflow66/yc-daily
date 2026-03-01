@@ -225,7 +225,7 @@
         </header>
 
         <section class="surface rounded-3xl p-6 shadow-2xl relative overflow-hidden min-h-[140px] flex flex-col justify-center">
-            <div id="lyric-content" class="relative z-10"></div>
+            <div id="lyric-content" class="relative z-10 transition-all duration-300 ease-out"></div>
             <div id="video-container" class="hidden mt-4 overflow-hidden rounded-xl bg-black aspect-video relative z-10"></div>
             <div class="absolute -top-10 -right-10 w-32 h-32 blur-[80px]" style="background: var(--primary); opacity: 0.2;"></div>
         </section>
@@ -280,9 +280,12 @@
     </div>
 
     <script>
-        const CONFIG = { LYRICS_URL: 'https://raw.githubusercontent.com/mistyflow66/yc-daily/refs/heads/main/lyrics.json' };
+        const CONFIG = { LYRICS_URL: 'lyrics.json' };
         let db = { todo: [], idea: [], buy: [] };
         let lyricsDB = [], currentLyric = null;
+        let lyricHistory = [];
+        let isLyricTransitioning = false;
+        const RECENT_HISTORY_LIMIT = 25;
         
         // 貓咪狀態變數
         let catX = 50, catTargetX = 50;
@@ -315,6 +318,7 @@
             if (!token || !gistId) { updateStatus('Setup Required'); startCat(); return; }
             try {
                 const lRes = await fetch(CONFIG.LYRICS_URL); lyricsDB = await lRes.json();
+                lyricHistory = [];
                 const gRes = await fetch(`https://api.github.com/gists/${gistId}`, { headers: { Authorization: `token ${token}` } });
                 const gData = await gRes.json(); db = JSON.parse(gData.files['dashboard.json'].content);
                 renderAll(); refreshLyric(); updateStatus('System Online');
@@ -539,11 +543,57 @@
                 </li>
             `).join('');
         }
+        function getLyricKey(item) {
+            return `${item.title}::${item.ytId}::${item.quote}`;
+        }
+        function pickNextLyric() {
+            if (!lyricsDB.length) return null;
+            const historyLimit = lyricsDB.length <= RECENT_HISTORY_LIMIT ? lyricsDB.length : RECENT_HISTORY_LIMIT;
+            const recentKeys = lyricHistory.slice(-historyLimit);
+            const recentSet = new Set(recentKeys);
+            let candidates = lyricsDB.filter(item => !recentSet.has(getLyricKey(item)));
+
+            if (!candidates.length) {
+                lyricHistory = [];
+                candidates = lyricsDB.filter(() => true);
+            }
+
+            const selected = candidates[Math.floor(Math.random() * candidates.length)];
+            lyricHistory.push(getLyricKey(selected));
+            if (lyricHistory.length > historyLimit) {
+                lyricHistory = lyricHistory.slice(-historyLimit);
+            }
+            return selected;
+        }
+        function renderLyric(lyric) {
+            const isEn = !/[一-龥]/.test(lyric.quote);
+            return `<div class="relative pr-24"><button onclick="refreshLyric()" class="absolute top-0 right-0 text-[10px] font-bold text-white/70 hover:text-white">↻</button><div class="font-serif-tc text-lg mb-3 italic">${isEn ? '“' : '「'}${lyric.quote}${isEn ? '”' : '」'}</div><div class="flex justify-between items-center gap-2"><span class="text-[10px] uppercase tracking-widest text-muted">// ${lyric.title}</span><div class="flex gap-2"><a href="https://www.youtube.com/watch?v=${lyric.ytId}" target="_blank" rel="noopener noreferrer" class="text-[10px] font-bold text-white/60 hover:text-white">OPEN_YT</a><button onclick="toggleVideo()" class="text-[10px] font-bold text-accent-green">DISPLAY_FULL</button></div></div></div>`;
+        }
+        function syncVideoIfOpened() {
+            const v = document.getElementById('video-container');
+            if (!currentLyric || !v || v.classList.contains('hidden')) return;
+            v.innerHTML = `<iframe width="100%" height="100%" src="https://www.youtube.com/embed/${currentLyric.ytId}?autoplay=1" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+        }
         function refreshLyric() {
-            if (!lyricsDB.length) return;
-            currentLyric = lyricsDB[Math.floor(Math.random() * lyricsDB.length)];
-            const isEn = !/[一-龥]/.test(currentLyric.quote);
-            document.getElementById('lyric-content').innerHTML = `<div class="font-serif-tc text-lg mb-3 italic">${isEn ? '“' : '「'}${currentLyric.quote}${isEn ? '”' : '」'}</div><div class="flex justify-between items-center"><span class="text-[10px] uppercase tracking-widest text-muted">// ${currentLyric.title}</span><button onclick="toggleVideo()" class="text-[10px] font-bold text-accent-green">DISPLAY_FULL</button></div>`;
+            if (!lyricsDB.length || isLyricTransitioning) return;
+            const lyricContent = document.getElementById('lyric-content');
+            if (!lyricContent) return;
+
+            isLyricTransitioning = true;
+            lyricContent.classList.add('opacity-0', 'translate-y-1');
+
+            setTimeout(() => {
+                currentLyric = pickNextLyric();
+                if (!currentLyric) {
+                    isLyricTransitioning = false;
+                    lyricContent.classList.remove('opacity-0', 'translate-y-1');
+                    return;
+                }
+                lyricContent.innerHTML = renderLyric(currentLyric);
+                syncVideoIfOpened();
+                lyricContent.classList.remove('opacity-0', 'translate-y-1');
+                isLyricTransitioning = false;
+            }, 160);
         }
         function toggleVideo() {
             const v = document.getElementById('video-container');
