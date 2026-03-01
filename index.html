@@ -579,7 +579,7 @@
         }
         function renderLyric(lyric) {
             const isEn = !/[一-龥]/.test(lyric.quote);
-            return `<div class="relative pr-24"><button onclick="refreshLyric()" class="absolute top-0 right-0 text-[10px] font-bold text-white/70 hover:text-white">↻</button><div class="font-serif-tc text-lg mb-3 italic">${isEn ? '“' : '「'}${lyric.quote}${isEn ? '”' : '」'}</div><div class="flex justify-between items-center gap-2"><span class="text-[10px] uppercase tracking-widest text-muted">// ${lyric.title}</span><div class="flex gap-2"><a href="https://www.youtube.com/watch?v=${lyric.ytId}" target="_blank" rel="noopener noreferrer" class="text-[10px] font-bold text-white/60 hover:text-white">OPEN_YT</a><button onclick="toggleVideo()" class="text-[10px] font-bold text-accent-green">DISPLAY_FULL</button></div></div></div>`;
+            return `<div class="font-serif-tc text-lg mb-3 italic">${isEn ? '“' : '「'}${lyric.quote}${isEn ? '”' : '」'}</div><div class="flex justify-between items-center gap-2"><span class="text-[10px] uppercase tracking-widest text-muted">// ${lyric.title}</span><div class="flex gap-2"><a href="https://www.youtube.com/watch?v=${lyric.ytId}" target="_blank" rel="noopener noreferrer" class="text-[10px] font-bold text-white/60 hover:text-white">OPEN_YT</a><button onclick="toggleVideo()" class="text-[10px] font-bold text-accent-green">DISPLAY_FULL</button><button onclick="refreshLyric()" class="text-[10px] font-bold text-white/70 hover:text-white">↻</button></div></div>`;
         }
         function syncVideoIfOpened() {
             const v = document.getElementById('video-container');
