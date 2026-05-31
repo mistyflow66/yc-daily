@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        body { 
+            background: transparent !important; /* 核心：背景必須完全透明 */
+            margin: 0; padding: 0; overflow: hidden;
+            width: 100vw; height: 100vh;
+            position: relative;
+        }
+        /* ================= 直接貼上你原本的貓咪 CSS ================= */
+        #pixel-cat {
+            position: absolute; bottom: 5px; left: 10px;
+            width: 30px; height: 20px; background: #FFFFFF;
+            border-radius: 10px 10px 5px 5px; cursor: pointer;
+            transition: transform 0.2s linear, height 0.2s;
+            animation: catBounce 0.6s infinite alternate;
+        }
+        .cat-sit { height: 16px; border-radius: 10px 10px 8px 8px; }
+        #pixel-cat::before, #pixel-cat::after {
+            content: ""; position: absolute; top: -8px;
+            border-left: 6px solid transparent; border-right: 6px solid transparent;
+            border-bottom: 10px solid #FFFFFF;
+        }
+        #pixel-cat::before { left: 2px; transform: rotate(-10deg); }
+        #pixel-cat::after { right: 2px; transform: rotate(10deg); }
+        #cat-eyes { position: absolute; top: 6px; left: 5px; width: 20px; display: flex; justify-content: space-around; }
+        .eye { width: 4px; height: 4px; background: #181225; border-radius: 50%; }
+        #cat-tail { position: absolute; bottom: 4px; width: 12px; height: 6px; background: #FFFFFF; border-radius: 5px; transition: all 0.3s; z-index: -1; }
+        .tail-left { left: -8px; transform-origin: right; border-radius: 5px 0 0 5px; animation: tailWagLeft 0.4s infinite alternate; }
+        .tail-right { right: -8px; transform-origin: left; border-radius: 0 5px 5px 0; animation: tailWagRight 0.4s infinite alternate; }
+        .tail-rest-left { left: 4px; animation: none; transform: rotate(0deg); }
+        .tail-rest-right { right: 4px; animation: none; transform: rotate(0deg); }
+        @keyframes catBounce { from { transform: translateY(0); } to { transform: translateY(-3px); } }
+        @keyframes tailWagLeft { from { transform: rotate(0deg); } to { transform: rotate(-30deg); } }
+        @keyframes tailWagRight { from { transform: rotate(0deg); } to { transform: rotate(30deg); } }
+        #cat-bubble {
+            position: absolute; bottom: 35px; left: 50%; transform: translateX(-20%);
+            background: white; color: black; padding: 5px 12px; border-radius: 10px;
+            font-size: 11px; font-weight: bold; display: none; z-index: 110;
+            white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        #cat-bubble::after {
+            content: ""; position: absolute; bottom: -5px; left: 15px;
+            border-style: solid; border-width: 6px 6px 0 0; border-color: white transparent transparent transparent;
+        }
+    </style>
+</head>
+<body>
+    <div id="pixel-cat" onclick="meow()">
+        <div id="cat-eyes"><div class="eye"></div><div class="eye"></div></div>
+        <div id="cat-tail"></div>
+        <div id="cat-bubble">MEOW!</div>
+    </div>
+
+    <script>
+        // 貼上你原本的 JS 走路邏輯
+        let catX = 10, catTargetX = 10;
+        let isWalking = true, isPaused = false;
+        let tailSide = 'right', bubbleTimer = null;
+
+        function startCat() { catTargetX = (window.innerWidth - 40) * Math.random(); moveCat(); }
+        function showTail(dir) {
+            const t = document.getElementById('cat-tail'); t.className = '';
+            if(dir === 'left') { t.classList.add('tail-right'); tailSide = 'right'; } 
+            else { t.classList.add('tail-left'); tailSide = 'left'; }
+        }
+        function restTail() { const t = document.getElementById('cat-tail'); t.className = ''; t.classList.add(tailSide === 'left' ? 'tail-rest-left' : 'tail-rest-right'); }
+        
+        function moveCat() {
+            const cat = document.getElementById('pixel-cat');
+            const w = window.innerWidth - 40;
+            if (isWalking && !isPaused) {
+                cat.classList.remove('cat-sit');
+                const movingRight = catTargetX > catX;
+                cat.style.transform = movingRight ? 'scaleX(-1)' : 'scaleX(1)';
+                showTail(movingRight ? 'right' : 'left');
+
+                if (Math.abs(catX - catTargetX) < 2) {
+                    isWalking = false; isPaused = true;
+                    cat.classList.add('cat-sit');
+                    setTimeout(() => { restTail(); }, 1000);
+                    setTimeout(() => { catTargetX = Math.random() * w; isPaused = false; isWalking = true; }, 3000);
+                } else {
+                    catX += movingRight ? 0.7 : -0.7;
+                    catX = Math.max(0, Math.min(w, catX));
+                    cat.style.left = catX + 'px';
+                }
+            }
+            requestAnimationFrame(moveCat);
+        }
+        
+        function meow() {
+            const bubble = document.getElementById('cat-bubble');
+            const eyes = document.getElementById('cat-eyes');
+            const msgs = ["MEOW!", "喵～", "想睡覺...", "摸我？", "我只要只屬於我的宇宙♪", "喵的咧～","是片刻組成永恆吶♪"];
+            bubble.innerText = msgs[Math.floor(Math.random() * msgs.length)];
+            bubble.style.display = 'block';
+            if(bubbleTimer) clearTimeout(bubbleTimer);
+            bubbleTimer = setTimeout(() => bubble.style.display = 'none', 3000);
+            eyes.style.transform = 'scaleY(0.1)';
+            setTimeout(() => eyes.style.transform = 'scaleY(1)', 150);
+        }
+        window.onload = startCat;
+    </script>
+</body>
+</html>
