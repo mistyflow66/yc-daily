@@ -10,13 +10,17 @@
             width: 100vw; height: 100vh;
             position: relative;
         }
-        /* ================= 直接貼上你原本的貓咪 CSS ================= */
+        /* ================= 貓咪基礎樣式 ================= */
         #pixel-cat {
             position: absolute; bottom: 5px; left: 10px;
             width: 30px; height: 20px; background: #FFFFFF;
             border-radius: 10px 10px 5px 5px; cursor: pointer;
             transition: transform 0.2s linear, height 0.2s;
             animation: catBounce 0.6s infinite alternate;
+            user-select: none;
+            -webkit-user-drag: none;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
         }
         .cat-sit { height: 16px; border-radius: 10px 10px 8px 8px; }
         #pixel-cat::before, #pixel-cat::after {
@@ -26,26 +30,48 @@
         }
         #pixel-cat::before { left: 2px; transform: rotate(-10deg); }
         #pixel-cat::after { right: 2px; transform: rotate(10deg); }
-        #cat-eyes { position: absolute; top: 6px; left: 5px; width: 20px; display: flex; justify-content: space-around; }
+        #cat-eyes { position: absolute; top: 6px; left: 5px; width: 20px; display: flex; justify-content: space-around; transition: transform 0.1s; }
         .eye { width: 4px; height: 4px; background: #181225; border-radius: 50%; }
         #cat-tail { position: absolute; bottom: 4px; width: 12px; height: 6px; background: #FFFFFF; border-radius: 5px; transition: all 0.3s; z-index: -1; }
         .tail-left { left: -8px; transform-origin: right; border-radius: 5px 0 0 5px; animation: tailWagLeft 0.4s infinite alternate; }
         .tail-right { right: -8px; transform-origin: left; border-radius: 0 5px 5px 0; animation: tailWagRight 0.4s infinite alternate; }
         .tail-rest-left { left: 4px; animation: none; transform: rotate(0deg); }
         .tail-rest-right { right: 4px; animation: none; transform: rotate(0deg); }
+        
         @keyframes catBounce { from { transform: translateY(0); } to { transform: translateY(-3px); } }
         @keyframes tailWagLeft { from { transform: rotate(0deg); } to { transform: rotate(-30deg); } }
         @keyframes tailWagRight { from { transform: rotate(0deg); } to { transform: rotate(30deg); } }
+        
         #cat-bubble {
-            position: absolute; bottom: 35px; left: 50%; transform: translateX(-20%);
+            position: absolute; bottom: 35px; left: 50%;
             background: white; color: black; padding: 5px 12px; border-radius: 10px;
             font-size: 11px; font-weight: bold; display: none; z-index: 110;
             white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            /* 移除原本固定的 transform X 軸偏移，改由 JS 動態控制 */
+            transform: translateX(-50%); 
+            transition: transform 0.1s ease;
         }
+        /* 讓對話框的小箭頭始終指向貓咪正上方 */
         #cat-bubble::after {
-            content: ""; position: absolute; bottom: -5px; left: 15px;
-            border-style: solid; border-width: 6px 6px 0 0; border-color: white transparent transparent transparent;
+            content: ""; position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%);
+            border-style: solid; border-width: 6px 6px 0 6px; border-color: white transparent transparent transparent;
         }
+
+        /* ================= 專屬後空翻 CSS 動畫 ================= */
+        .main-cat-backflip {
+            animation: mainCatFlip .8s cubic-bezier(.45,.05,.55,.95) forwards !important;
+            z-index: 200;
+        }
+        @keyframes mainCatFlip {
+            0% { transform: scaleX(var(--cat-d, 1)) rotate(0); height: 20px; }
+            15% { transform: scaleX(var(--cat-d, 1)) translateY(10px) rotate(0); height: 14px; }
+            35% { transform: scaleX(var(--cat-d, 1)) translateY(-60px) rotate(-120deg); height: 24px; }
+            60% { transform: scaleX(var(--cat-d, 1)) translateY(-80px) rotate(-240deg); height: 20px; }
+            85% { transform: scaleX(var(--cat-d, 1)) translateY(5px) rotate(-360deg); height: 12px; }
+            100% { transform: scaleX(var(--cat-d, 1)) translateY(0) rotate(-360deg); height: 20px; }
+        }
+        .main-cat-backflip #cat-tail { transform: scale(0); }
+        .main-cat-backflip .eye { transform: scaleY(.2); }
     </style>
 </head>
 <body>
@@ -56,7 +82,6 @@
     </div>
 
     <script>
-        // 貼上你原本的 JS 走路邏輯
         let catX = 10, catTargetX = 10;
         let isWalking = true, isPaused = false;
         let tailSide = 'right', bubbleTimer = null;
@@ -69,6 +94,24 @@
         }
         function restTail() { const t = document.getElementById('cat-tail'); t.className = ''; t.classList.add(tailSide === 'left' ? 'tail-rest-left' : 'tail-rest-right'); }
         
+        // 【新增】動態調整對話框位置，防止超出螢幕左右邊界
+        function adjustBubblePosition() {
+            const bubble = document.getElementById('cat-bubble');
+            const w = window.innerWidth;
+            
+            // 根據貓咪當前所在 X 座標(catX)判定
+            if (catX < 45) {
+                // 太靠左邊：對話框往右偏
+                bubble.style.transform = 'translateX(-20%)';
+            } else if (catX > w - 85) {
+                // 太靠右邊：對話框往左偏
+                bubble.style.transform = 'translateX(-80%)';
+            } else {
+                // 中間正常狀態：對話框完美居中
+                bubble.style.transform = 'translateX(-50%)';
+            }
+        }
+
         function moveCat() {
             const cat = document.getElementById('pixel-cat');
             const w = window.innerWidth - 40;
@@ -93,15 +136,51 @@
         }
         
         function meow() {
+            const cat = document.getElementById('pixel-cat');
             const bubble = document.getElementById('cat-bubble');
             const eyes = document.getElementById('cat-eyes');
-            const msgs = ["MEOW!", "喵～", "想睡覺...", "摸我？", "我只要只屬於我的宇宙♪", "喵的咧～","是片刻組成永恆吶♪"];
-            bubble.innerText = msgs[Math.floor(Math.random() * msgs.length)];
-            bubble.style.display = 'block';
-            if(bubbleTimer) clearTimeout(bubbleTimer);
-            bubbleTimer = setTimeout(() => bubble.style.display = 'none', 3000);
-            eyes.style.transform = 'scaleY(0.1)';
-            setTimeout(() => eyes.style.transform = 'scaleY(1)', 150);
+            
+            // 防止動畫播放途中連續點擊導致重疊
+            if (cat.classList.contains('main-cat-backflip')) return;
+
+            // 隨機判定：30% 機率觸發後空翻
+            const isBackflip = Math.random() < 0.3;
+
+            if (isBackflip) {
+                isPaused = true; // 後空翻時暫停背景行走移動
+                
+                // 先將原有的對話框立刻隱藏，並清除計時器
+                bubble.style.display = 'none';
+                if(bubbleTimer) clearTimeout(bubbleTimer);
+                
+                // 鎖定當前的 scaleX 方向，注入 CSS 變數，防止翻轉時圖層突兀地轉向
+                const currentScaleX = cat.style.transform.includes('scaleX(-1)') ? -1 : 1;
+                cat.style.setProperty('--cat-d', currentScaleX);
+                
+                // 讓貓咪加入後空翻 class (不觸發對話框)
+                cat.classList.add('main-cat-backflip');
+                
+                // 0.8秒動畫結束後回復常態
+                setTimeout(() => {
+                    cat.classList.remove('main-cat-backflip');
+                    isPaused = false; // 恢復走路判定
+                }, 800);
+            } else {
+                // 70% 機率正常觸發對話框占卜與瞇眼
+                const msgs = ["MEOW!", "喵～", "想睡覺...", "摸我？", "我只要只屬於我的宇宙♪", "喵的咧～","是片刻組成永恆吶♪"];
+                bubble.innerText = msgs[Math.floor(Math.random() * msgs.length)];
+                
+                // 【核心修改】在顯示對話框前，先計算並修正它的 X 軸位移
+                adjustBubblePosition();
+                
+                bubble.style.display = 'block';
+                
+                if(bubbleTimer) clearTimeout(bubbleTimer);
+                bubbleTimer = setTimeout(() => bubble.style.display = 'none', 3000);
+                
+                eyes.style.transform = 'scaleY(0.1)';
+                setTimeout(() => eyes.style.transform = 'scaleY(1)', 150);
+            }
         }
         window.onload = startCat;
     </script>
